@@ -1,0 +1,70 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  workspace:
+    name: workspace (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - windows-latest
+          - ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Prepare pnpm
+        run: corepack prepare pnpm@10.0.0 --activate
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check Drizzle migrations
+        run: pnpm run db:check
+
+      - name: Verify workspace
+        run: pnpm run verify
+
+      - name: Run unit tests
+        run: pnpm run test
+
+      - name: Run integration tests
+        run: pnpm run test:integration
+
+      - name: Build workspace
+        run: pnpm run build
+
+      - name: Setup Rust
+        if: ${{ hashFiles('native/**/*.rs') != '' }}
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Verify Rust crates
+        if: ${{ hashFiles('native/**/*.rs') != '' }}
+        shell: pwsh
+        run: |
+          Push-Location native
+          cargo fmt --check
+          cargo clippy --all-targets --all-features
+          cargo test
+          Pop-Location
+
+      - name: Skip Rust verification
+        if: ${{ hashFiles('native/**/*.rs') == '' }}
+        run: echo "No Rust sources found under native/; skipping Rust verification."

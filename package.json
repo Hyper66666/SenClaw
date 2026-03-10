@@ -1,0 +1,41 @@
+{
+  "name": "senclaw",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@10.0.0",
+  "engines": {
+    "node": ">=22.0.0",
+    "pnpm": ">=10.0.0"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @senclaw/gateway dev",
+    "lint": "biome lint .",
+    "format": "biome format --write .",
+    "format:check": "biome check . --formatter-enabled=true --linter-enabled=false --organize-imports-enabled=false",
+    "typecheck": "tsc -b tsconfig.workspace.json",
+    "test": "vitest run --config vitest.config.ts",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "test:persistence-smoke": "node scripts/persistence-smoke-test.mjs",
+    "build": "tsc -b tsconfig.workspace.json",
+    "verify": "biome lint . && biome check . --formatter-enabled=true --linter-enabled=false --organize-imports-enabled=false && tsc -b tsconfig.workspace.json",
+    "package": "pnpm build",
+    "db:generate": "pnpm --filter @senclaw/storage db:generate",
+    "db:check": "pnpm --filter @senclaw/storage db:check",
+    "db:migrate": "node packages/storage/scripts/db-migrate.js",
+    "auth:bootstrap-admin": "tsx scripts/bootstrap-admin-key.ts"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["better-sqlite3", "esbuild"]
+  },
+  "devDependencies": {
+    "@opentelemetry/sdk-trace-base": "^2.1.0",
+    "@biomejs/biome": "^1.9.4",
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "vitest": "^2.1.8"
+  },
+  "dependencies": {
+    "zod": "^4.3.6"
+  }
+}

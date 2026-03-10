@@ -1,0 +1,58 @@
+{
+  "title": "Senclaw - Tool Analytics",
+  "tags": ["senclaw", "tools"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "15s",
+  "panels": [
+    {
+      "id": 1,
+      "title": "Tool Calls by Tool",
+      "type": "piechart",
+      "targets": [
+        {
+          "expr": "sum(increase(tool_calls_total[1h])) by (tool_name)",
+          "legendFormat": "{{tool_name}}"
+        }
+      ],
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 0 }
+    },
+    {
+      "id": 2,
+      "title": "Tool Failure Rate",
+      "type": "table",
+      "targets": [
+        {
+          "expr": "sum(rate(tool_calls_total{status=\"failed\"}[1h])) by (tool_name) / clamp_min(sum(rate(tool_calls_total[1h])) by (tool_name), 0.0001) * 100",
+          "legendFormat": "{{tool_name}}"
+        }
+      ],
+      "gridPos": { "h": 8, "w": 16, "x": 8, "y": 0 }
+    },
+    {
+      "id": 3,
+      "title": "Tool Latency P95",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(tool_call_duration_seconds_bucket[5m])) by (tool_name, le))",
+          "legendFormat": "{{tool_name}}"
+        }
+      ],
+      "gridPos": { "h": 9, "w": 14, "x": 0, "y": 8 }
+    },
+    {
+      "id": 4,
+      "title": "Tool Call Rate",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum(rate(tool_calls_total[5m])) by (tool_name)",
+          "legendFormat": "{{tool_name}}"
+        }
+      ],
+      "gridPos": { "h": 9, "w": 10, "x": 14, "y": 8 }
+    }
+  ]
+}

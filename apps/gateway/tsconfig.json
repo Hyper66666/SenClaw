@@ -1,0 +1,18 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    "tsBuildInfoFile": "dist/.tsbuildinfo"
+  },
+  "include": ["src/**/*.ts"],
+  "references": [
+    { "path": "../../packages/protocol" },
+    { "path": "../../packages/config" },
+    { "path": "../../packages/logging" },
+    { "path": "../../packages/observability" },
+    { "path": "../../packages/storage" },
+    { "path": "../agent-runner" },
+    { "path": "../tool-runner-host" }
+  ]
+}

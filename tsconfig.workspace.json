@@ -1,0 +1,16 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./packages/protocol" },
+    { "path": "./packages/config" },
+    { "path": "./packages/logging" },
+    { "path": "./packages/observability" },
+    { "path": "./packages/storage" },
+    { "path": "./apps/gateway" },
+    { "path": "./apps/web" },
+    { "path": "./apps/agent-runner" },
+    { "path": "./apps/connector-worker" },
+    { "path": "./apps/tool-runner-host" },
+    { "path": "./apps/scheduler" }
+  ]
+}

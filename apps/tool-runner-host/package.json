@@ -1,0 +1,26 @@
+{
+  "name": "@senclaw/tool-runner-host",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "files": ["dist"],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -b",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@senclaw/config": "workspace:^",
+    "@senclaw/logging": "workspace:^",
+    "@senclaw/observability": "workspace:^",
+    "@senclaw/protocol": "workspace:^"
+  }
+}

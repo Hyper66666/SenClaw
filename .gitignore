@@ -1,0 +1,11 @@
+node_modules/
+dist/
+target/
+.pnpm-store/
+.env
+.env.local
+*.tsbuildinfo
+.tmp/
+.claude/
+.codex/
+

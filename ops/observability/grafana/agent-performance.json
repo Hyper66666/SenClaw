@@ -1,0 +1,58 @@
+{
+  "title": "Senclaw - Agent Performance",
+  "tags": ["senclaw", "agents"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "15s",
+  "panels": [
+    {
+      "id": 1,
+      "title": "Executions by Agent",
+      "type": "barchart",
+      "targets": [
+        {
+          "expr": "sum(increase(agent_executions_total[1h])) by (agent_id)",
+          "legendFormat": "{{agent_id}}"
+        }
+      ],
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 }
+    },
+    {
+      "id": 2,
+      "title": "Success Rate by Agent",
+      "type": "table",
+      "targets": [
+        {
+          "expr": "sum(rate(agent_executions_total{status=\"success\"}[1h])) by (agent_id) / clamp_min(sum(rate(agent_executions_total[1h])) by (agent_id), 0.0001) * 100",
+          "legendFormat": "{{agent_id}}"
+        }
+      ],
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 }
+    },
+    {
+      "id": 3,
+      "title": "Execution Latency P95",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(agent_execution_duration_seconds_bucket[5m])) by (agent_id, le))",
+          "legendFormat": "{{agent_id}}"
+        }
+      ],
+      "gridPos": { "h": 9, "w": 14, "x": 0, "y": 8 }
+    },
+    {
+      "id": 4,
+      "title": "Failed Executions",
+      "type": "table",
+      "targets": [
+        {
+          "expr": "topk(20, sum(increase(agent_executions_total{status=\"failed\"}[1h])) by (agent_id))",
+          "legendFormat": "{{agent_id}}"
+        }
+      ],
+      "gridPos": { "h": 9, "w": 10, "x": 14, "y": 8 }
+    }
+  ]
+}

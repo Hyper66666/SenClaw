@@ -1,0 +1,33 @@
+{
+  "name": "@senclaw/gateway",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "files": ["dist"],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -b",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@fastify/rate-limit": "^10.3.0",
+    "@senclaw/agent-runner": "workspace:^",
+    "@senclaw/config": "workspace:^",
+    "@senclaw/logging": "workspace:^",
+    "@senclaw/observability": "workspace:^",
+    "@senclaw/protocol": "workspace:^",
+    "@senclaw/storage": "workspace:^",
+    "@senclaw/tool-runner-host": "workspace:^",
+    "fastify": "^5.8.2",
+    "fastify-plugin": "^5.1.0",
+    "pino": "^10.3.1"
+  }
+}
