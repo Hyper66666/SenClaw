@@ -1,5 +1,7 @@
 # Senclaw
 
+[English](./README.md) | [简体中文](./README.zh-CN.md)
+
 Senclaw is an AI agent orchestration platform with persistent storage, API-key authentication, a web console, connector ingestion, scheduling, and sandboxed tool execution.
 
 The codebase is feature-rich and the repository gate is now green locally. As of March 12, 2026, the latest local Windows verification shows `build`, `test`, `test:integration`, and `verify` all passing. RabbitMQ and Redis Streams queue drivers are now implemented in-tree with unit coverage and default gateway wiring, but live-broker release evidence is still pending. A real OpenAI-compatible smoke run is also recorded, so the remaining baseline go-live work is narrowed to a supported-runtime rerun on Node 22 and protected web-console acceptance.
