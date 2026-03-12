@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { loadConfig } from "../src/index.js";
+import { loadConfig, loadProviderSmokeConfig } from "../src/index.js";
 
 describe("loadConfig", () => {
   const originalEnv = { ...process.env };
@@ -96,5 +96,43 @@ describe("loadConfig", () => {
     process.env.SENCLAW_LOG_SAMPLING_RATE = "2";
 
     expect(() => loadConfig()).toThrow("SENCLAW_LOG_SAMPLING_RATE");
+  });
+});
+
+describe("loadProviderSmokeConfig", () => {
+  const originalEnv = { ...process.env };
+
+  beforeEach(() => {
+    process.env = { ...originalEnv };
+    process.env.SENCLAW_OPENAI_API_KEY = undefined;
+    process.env.SENCLAW_OPENAI_BASE_URL = undefined;
+    process.env.SENCLAW_OPENAI_MODEL = undefined;
+    process.env.SENCLAW_SMOKE_PROMPT = undefined;
+    process.env.SENCLAW_SMOKE_TIMEOUT_MS = undefined;
+  });
+
+  afterEach(() => {
+    process.env = { ...originalEnv };
+  });
+
+  it("reads the OpenAI-compatible smoke configuration from environment variables", () => {
+    process.env.SENCLAW_OPENAI_API_KEY = " test-key ";
+    process.env.SENCLAW_OPENAI_BASE_URL = " https://example.com/v1 ";
+    process.env.SENCLAW_OPENAI_MODEL = " doubao-seed-2.0-pro ";
+
+    const config = loadProviderSmokeConfig();
+    expect(config).toEqual({
+      apiKey: "test-key",
+      baseURL: "https://example.com/v1",
+      model: "doubao-seed-2.0-pro",
+      prompt: "Reply with the single word OK.",
+      timeoutMs: 60_000,
+    });
+  });
+
+  it("throws a descriptive error when required smoke variables are missing", () => {
+    expect(() => loadProviderSmokeConfig()).toThrow("SENCLAW_OPENAI_API_KEY");
+    expect(() => loadProviderSmokeConfig()).toThrow("SENCLAW_OPENAI_BASE_URL");
+    expect(() => loadProviderSmokeConfig()).toThrow("SENCLAW_OPENAI_MODEL");
   });
 });

@@ -56,9 +56,7 @@ export class APIClient {
     this.client = axios.create({
       baseURL: baseURL || config.gatewayUrl || "http://localhost:4100",
       headers: {
-        Authorization: resolvedApiKey
-          ? `Bearer ${resolvedApiKey}`
-          : undefined,
+        Authorization: resolvedApiKey ? `Bearer ${resolvedApiKey}` : undefined,
       },
     });
   }
@@ -108,7 +106,10 @@ export class APIClient {
 
 export function handleAPIError(error: unknown): never {
   if (axios.isAxiosError(error)) {
-    const axiosError = error as AxiosError<{ error?: string; message?: string }>;
+    const axiosError = error as AxiosError<{
+      error?: string;
+      message?: string;
+    }>;
 
     if (axiosError.response) {
       const data = axiosError.response.data;

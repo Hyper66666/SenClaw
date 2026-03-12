@@ -36,7 +36,9 @@ export function taskCommand(program: Command) {
 
         console.log(chalk.gray(`Run ID: ${run.id}`));
         console.log(chalk.gray(`Status: ${run.status}`));
-        console.log(chalk.dim(`\nUse 'senclaw run get ${run.id}' to check status`));
+        console.log(
+          chalk.dim(`\nUse 'senclaw run get ${run.id}' to check status`),
+        );
       } catch (error) {
         handleAPIError(error);
       }

@@ -69,8 +69,20 @@ Default preview URL:
 - active run details poll every 2 seconds while the run is active
 - health polls every 30 seconds
 
+## Protected Gateway Acceptance Checklist
+
+Use this checklist before claiming the web console is ready for operator use against a protected gateway:
+
+1. configure a valid bearer token through the header session form
+2. load the agents list successfully
+3. create an agent successfully
+4. submit a task and open the resulting run detail view
+5. delete the test agent and confirm the `204` flow completes without a client-side parse error
+6. clear or replace the token and confirm missing, invalid, and revoked credentials show a recoverable error state
+
 ## Current Limits
 
 - there is no end-user identity system; operators bring their own API key
 - the console currently targets the gateway API only
 - release readiness still depends on repository-wide `pnpm run verify` cleanup and recorded manual verification against a protected gateway
+

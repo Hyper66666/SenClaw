@@ -13,16 +13,35 @@ export interface WebhookConfig {
 }
 
 // Queue config
-export interface QueueConfig {
+export interface RabbitMqQueueConfig {
   type: "queue";
-  provider: "rabbitmq" | "redis";
+  provider: "rabbitmq";
   url: string;
-  queue?: string; // RabbitMQ
-  exchange?: string; // RabbitMQ
-  routingKey?: string; // RabbitMQ
-  prefetch?: number; // RabbitMQ
-  channel?: string; // Redis
+  queue: string;
+  exchange?: string;
+  exchangeType?: "direct" | "fanout" | "topic" | "headers";
+  routingKey?: string;
+  prefetch?: number;
+  durable?: boolean;
+  requeueOnFailure?: boolean;
+  deadLetterExchange?: string;
+  deadLetterRoutingKey?: string;
 }
+
+export interface RedisQueueConfig {
+  type: "queue";
+  provider: "redis";
+  url: string;
+  stream: string;
+  consumerGroup: string;
+  consumerName?: string;
+  batchSize?: number;
+  blockMs?: number;
+  requeueOnFailure?: boolean;
+  deadLetterStream?: string;
+}
+
+export type QueueConfig = RabbitMqQueueConfig | RedisQueueConfig;
 
 // Polling config
 export interface PollingConfig {
@@ -137,7 +156,11 @@ export interface IConnectorEventRepository {
   get(id: string): Promise<ConnectorEvent | undefined>;
   listByConnectorId(
     connectorId: string,
-    filters?: { status?: ConnectorEventStatus; limit?: number; offset?: number },
+    filters?: {
+      status?: ConnectorEventStatus;
+      limit?: number;
+      offset?: number;
+    },
   ): Promise<ConnectorEvent[]>;
   update(
     id: string,
@@ -160,16 +183,38 @@ export const WebhookConfigSchema = z.object({
   allowedIPs: z.array(z.string()).optional(),
 });
 
-export const QueueConfigSchema = z.object({
+const RabbitMqQueueConfigSchema = z.object({
   type: z.literal("queue"),
-  provider: z.enum(["rabbitmq", "redis"]),
+  provider: z.literal("rabbitmq"),
   url: z.string().url(),
-  queue: z.string().optional(),
-  exchange: z.string().optional(),
+  queue: z.string().min(1),
+  exchange: z.string().min(1).optional(),
+  exchangeType: z.enum(["direct", "fanout", "topic", "headers"]).optional(),
   routingKey: z.string().optional(),
   prefetch: z.number().int().positive().optional(),
-  channel: z.string().optional(),
+  durable: z.boolean().optional(),
+  requeueOnFailure: z.boolean().optional(),
+  deadLetterExchange: z.string().min(1).optional(),
+  deadLetterRoutingKey: z.string().min(1).optional(),
 });
+
+const RedisQueueConfigSchema = z.object({
+  type: z.literal("queue"),
+  provider: z.literal("redis"),
+  url: z.string().url(),
+  stream: z.string().min(1),
+  consumerGroup: z.string().min(1),
+  consumerName: z.string().min(1).optional(),
+  batchSize: z.number().int().positive().optional(),
+  blockMs: z.number().int().nonnegative().optional(),
+  requeueOnFailure: z.boolean().optional(),
+  deadLetterStream: z.string().min(1).optional(),
+});
+
+export const QueueConfigSchema = z.discriminatedUnion("provider", [
+  RabbitMqQueueConfigSchema,
+  RedisQueueConfigSchema,
+]);
 
 export const PollingConfigSchema = z.object({
   type: z.literal("polling"),
@@ -178,9 +223,7 @@ export const PollingConfigSchema = z.object({
   method: z.string().optional(),
   headers: z.record(z.string(), z.string()).optional(),
   interval: z.number().int().positive(),
-  changeDetection: z
-    .enum(["etag", "content-hash", "last-modified"])
-    .optional(),
+  changeDetection: z.enum(["etag", "content-hash", "last-modified"]).optional(),
 });
 
 export const ConnectorConfigSchema = z.discriminatedUnion("type", [

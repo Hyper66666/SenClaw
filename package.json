@@ -16,6 +16,7 @@
     "test": "vitest run --config vitest.config.ts",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:persistence-smoke": "node scripts/persistence-smoke-test.mjs",
+    "test:provider-smoke": "tsx scripts/provider-smoke-test.ts",
     "build": "tsc -b tsconfig.workspace.json",
     "verify": "biome lint . && biome check . --formatter-enabled=true --linter-enabled=false --organize-imports-enabled=false && tsc -b tsconfig.workspace.json",
     "package": "pnpm build",

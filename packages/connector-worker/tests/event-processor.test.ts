@@ -32,22 +32,18 @@ describe("EventProcessor", () => {
       create: vi.fn(async (data) => ({ ...data })),
       update: vi.fn(async () => undefined),
     };
-    const processor = new EventProcessor(
-      { submitTask },
-      eventRepo as never,
-      {
-        retryPolicy: {
-          maxRetries: 2,
-          initialDelayMs: 10,
-          maxDelayMs: 100,
-          backoffMultiplier: 2,
-          schedule: async (work, delayMs) => {
-            retryDelays.push(delayMs);
-            await work();
-          },
+    const processor = new EventProcessor({ submitTask }, eventRepo as never, {
+      retryPolicy: {
+        maxRetries: 2,
+        initialDelayMs: 10,
+        maxDelayMs: 100,
+        backoffMultiplier: 2,
+        schedule: async (work, delayMs) => {
+          retryDelays.push(delayMs);
+          await work();
         },
       },
-    );
+    });
 
     await processor.processEvent(connector, { message: "hello" });
 
@@ -65,23 +61,21 @@ describe("EventProcessor", () => {
 
   it("does not retry non-retryable validation failures", async () => {
     const schedule = vi.fn();
-    const submitTask = vi.fn().mockRejectedValueOnce(
-      Object.assign(new Error("bad request"), { statusCode: 400 }),
-    );
+    const submitTask = vi
+      .fn()
+      .mockRejectedValueOnce(
+        Object.assign(new Error("bad request"), { statusCode: 400 }),
+      );
     const eventRepo = {
       create: vi.fn(async (data) => ({ ...data })),
       update: vi.fn(async () => undefined),
     };
-    const processor = new EventProcessor(
-      { submitTask },
-      eventRepo as never,
-      {
-        retryPolicy: {
-          maxRetries: 2,
-          schedule,
-        },
+    const processor = new EventProcessor({ submitTask }, eventRepo as never, {
+      retryPolicy: {
+        maxRetries: 2,
+        schedule,
       },
-    );
+    });
 
     await expect(
       processor.processEvent(connector, { message: "hello" }),

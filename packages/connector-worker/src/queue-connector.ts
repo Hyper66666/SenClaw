@@ -27,10 +27,11 @@ export class QueueConnector {
   ) {}
 
   async start(connector: Connector): Promise<QueueSubscription> {
-    if (connector.type !== "queue") {
+    if (connector.type !== "queue" || connector.config.type !== "queue") {
       throw new Error("QueueConnector only supports queue connectors");
     }
 
+    const requeueOnFailure = connector.config.requeueOnFailure === true;
     const subscription = await this.driver.subscribe(
       connector,
       async (message) => {
@@ -38,7 +39,7 @@ export class QueueConnector {
           await this.eventProcessor.processEvent(connector, message.payload);
           await message.ack();
         } catch {
-          await message.nack(false);
+          await message.nack(requeueOnFailure);
         }
       },
     );

@@ -2,7 +2,7 @@ import {
   ApiResponseError,
   MissingApiKeyError,
   createApiClient,
-} from "../index";
+} from "../api-client";
 import { loadStoredApiKey } from "./auth-session";
 
 export interface Agent {

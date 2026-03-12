@@ -55,6 +55,11 @@ jobs:
         with:
           components: rustfmt, clippy
 
+      - name: Build native sandbox runner (release)
+        if: ${{ hashFiles('native/sandbox-runner/**/*.rs') != '' }}
+        shell: pwsh
+        run: cargo build --release --manifest-path native/sandbox-runner/Cargo.toml
+
       - name: Verify Rust crates
         if: ${{ hashFiles('native/**/*.rs') != '' }}
         shell: pwsh
@@ -68,3 +73,4 @@ jobs:
       - name: Skip Rust verification
         if: ${{ hashFiles('native/**/*.rs') == '' }}
         run: echo "No Rust sources found under native/; skipping Rust verification."
+

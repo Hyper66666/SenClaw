@@ -12,9 +12,7 @@ import { connectorsTable } from "./schema.js";
 import type { StorageDatabase } from "./db.js";
 import { observeDbQuery } from "./metrics.js";
 
-function mapConnector(
-  row: typeof connectorsTable.$inferSelect,
-): Connector {
+function mapConnector(row: typeof connectorsTable.$inferSelect): Connector {
   return {
     id: row.id,
     name: row.name,

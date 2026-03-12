@@ -1,4 +1,4 @@
-import { ApiResponseError, MissingApiKeyError } from "../index";
+import { ApiResponseError, MissingApiKeyError } from "../api-client";
 
 export const API_KEY_STORAGE_KEY = "senclaw.apiKey";
 export { MissingApiKeyError };

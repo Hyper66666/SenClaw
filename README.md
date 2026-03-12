@@ -2,16 +2,16 @@
 
 Senclaw is an AI agent orchestration platform with persistent storage, API-key authentication, a web console, connector ingestion, scheduling, and sandboxed tool execution.
 
-The codebase is feature-rich, but release readiness still depends on repository-wide verification. As of March 12, 2026, the latest local Windows verification shows `build`, `test`, and `test:integration` passing, while `verify` is still blocked by repository-wide Biome formatting drift.
+The codebase is feature-rich and the repository gate is now green locally. As of March 12, 2026, the latest local Windows verification shows `build`, `test`, `test:integration`, and `verify` all passing. RabbitMQ and Redis Streams queue drivers are now implemented in-tree with unit coverage and default gateway wiring, but live-broker release evidence is still pending. A real OpenAI-compatible smoke run is also recorded, so the remaining baseline go-live work is narrowed to a supported-runtime rerun on Node 22 and protected web-console acceptance.
 
 ## Readiness Snapshot
 
-Latest local evidence on March 12, 2026 (Windows):
+Latest local evidence on March 12, 2026 (Windows, Node `v20.11.0` with engine warning):
 
 - `pnpm run build`: pass
-- `pnpm run test`: pass (`28` test files, `195` tests)
+- `pnpm run test`: pass (`33` test files, `217` tests)
 - `pnpm run test:integration`: pass (`6` test files, `20` tests)
-- `pnpm run verify`: fail (`42` Biome formatting errors across existing repository files)
+- `pnpm run verify`: pass
 
 Supported development platforms:
 
@@ -104,6 +104,27 @@ corepack pnpm run auth:bootstrap-admin
 
 The web console now supports a lightweight API-key session. Paste a bearer token into the header form before using protected views such as agents, runs, or task submission.
 
+## Real Provider Smoke Test
+
+Senclaw includes a smoke path for OpenAI-compatible providers that does not store secrets in the repository. Set these environment variables locally:
+
+```bash
+SENCLAW_OPENAI_API_KEY=<your key>
+SENCLAW_OPENAI_BASE_URL=<compatible base url>
+SENCLAW_OPENAI_MODEL=<model id>
+# optional
+SENCLAW_SMOKE_PROMPT=Reply with the single word OK.
+SENCLAW_SMOKE_TIMEOUT_MS=60000
+```
+
+Then run:
+
+```bash
+corepack pnpm run test:provider-smoke
+```
+
+The script exercises the existing gateway and agent runtime, creates a temporary agent with `provider: openai`, submits a task, waits for completion, and prints the assistant response or a diagnosable provider error. On March 12, 2026, this smoke path was validated against the Volcengine Ark OpenAI-compatible endpoint with model `doubao-seed-2.0-pro`, returning `OK`.
+
 ## Verification Commands
 
 ```bash
@@ -113,7 +134,7 @@ corepack pnpm run test:integration
 corepack pnpm run verify
 ```
 
-Current release claims must be based on all four commands, not just the test suites.
+Current release claims must be based on all four commands. The remaining baseline sign-off work is a rerun on Node 22 plus protected web-console acceptance evidence.
 
 ## Key Docs
 
@@ -125,12 +146,12 @@ Current release claims must be based on all four commands, not just the test sui
 
 ## Current Gaps
 
-These areas are implemented but not fully release-closed yet:
+These areas remain between "locally green" and a final deployment-ready claim:
 
-- repository-wide `verify` cleanup
-- OpenSpec task-state drift in several older changes
-- broker-specific queue drivers for RabbitMQ and Redis
-- evidence-backed Rust sandbox validation on both Windows and Linux
+- rerun the readiness matrix on supported Node 22
+- record protected web-console acceptance against an authenticated gateway
+- record live-broker RabbitMQ and Redis validation before claiming broker-backed queue support as release-ready
+- record evidence-backed Rust sandbox validation on both Windows and Linux if level 4 native enforcement will be claimed
 
 ## Repository URL
 

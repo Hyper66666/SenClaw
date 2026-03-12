@@ -30,7 +30,9 @@ export function healthCommand(program: Command) {
         const icon = statusIcons[health.status] || "?";
 
         console.log(
-          color.bold(`\n${icon} Overall Status: ${health.status.toUpperCase()}\n`),
+          color.bold(
+            `\n${icon} Overall Status: ${health.status.toUpperCase()}\n`,
+          ),
         );
 
         if (health.checks) {

@@ -399,8 +399,7 @@ describe("ToolRegistry", () => {
           },
         }),
       );
-      registry.register(testTool, (args) =>         `Hello, ${args.name}!`,
-      );
+      registry.register(testTool, (args) => `Hello, ${args.name}!`);
       registry.register(
         {
           name: "sandboxed-rust-missing",

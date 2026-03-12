@@ -2,39 +2,61 @@
 
 This document records the current release-readiness truth for Senclaw. It is intentionally stricter than feature-complete marketing language: a subsystem is only treated as release-ready when the implementation, OpenSpec state, and verification evidence line up.
 
-## Evidence Baseline
+## Go-Live Status Summary
 
-Latest local Windows verification on March 12, 2026:
+As of March 12, 2026, Senclaw is locally green on Windows and can be used for internal or controlled deployment trials. The baseline go-live gate is close, but it is not fully closed yet.
+
+Baseline evidence already recorded:
 
 - `pnpm run build`: pass
-- `pnpm run test`: pass (`28` test files, `195` tests)
+- `pnpm run test`: pass (`33` test files, `217` tests)
 - `pnpm run test:integration`: pass (`6` test files, `20` tests)
-- `pnpm run verify`: fail (`42` Biome formatting errors)
+- `pnpm run verify`: pass
+- real OpenAI-compatible smoke validation: pass on March 12, 2026 against the Volcengine Ark OpenAI-compatible endpoint using model `doubao-seed-2.0-pro`; the smoke prompt returned `OK`
 
-Authoritative release gate:
+Baseline blockers still open:
 
-1. `pnpm run build`
-2. `pnpm run test`
-3. `pnpm run test:integration`
-4. `pnpm run verify`
-5. Native sandbox validation on supported platforms when level 4 readiness is claimed
+- rerun the readiness matrix on the supported runtime, Node.js `>=22.0.0`
+- record protected web-console acceptance against an authentication-enabled gateway
 
-Current release blocker:
+Optional production extensions that are currently NOT claimed:
 
-- `pnpm run verify` is still red because of repository-wide formatting drift.
+- live-broker validated RabbitMQ support
+- live-broker validated Redis support
+- cross-platform Rust level 4 sandbox readiness
 
-Representative `verify` blocker examples from the March 12, 2026 run:
+## Evidence Baseline
 
-- `packages/connector-worker/tsconfig.json`
-- `apps/agent-runner/src/agent-service.ts`
-- `apps/agent-runner/src/model-provider.ts`
-- `apps/agent-runner/src/repositories.ts`
-- `apps/gateway/src/routes/runs.ts`
-- `apps/gateway/src/routes/tasks.ts`
-- `apps/gateway/src/server.ts`
-- `apps/connector-worker/package.json`
-- `packages/cli/src/commands/config.ts`
-- `packages/cli/src/commands/health.ts`
+Latest local Windows verification on March 12, 2026 (Node `v20.11.0`, with engine warning because the repository requires Node 22+):
+
+- `pnpm run build`: pass
+- `pnpm run test`: pass (`33` test files, `217` tests)
+- `pnpm run test:integration`: pass (`6` test files, `20` tests)
+- `pnpm run verify`: pass
+- `cargo build --release --manifest-path native/sandbox-runner/Cargo.toml`: pass
+- `pnpm run test:provider-smoke`: pass against an operator-supplied Ark endpoint and model; assistant response was `OK`
+
+Authoritative deployment gate:
+
+1. Supported runtime: Node.js `>=22.0.0`, pnpm `>=10.0.0`
+2. `pnpm run build`
+3. `pnpm run test`
+4. `pnpm run test:integration`
+5. `pnpm run verify`
+6. Real OpenAI-compatible smoke validation
+7. Protected web-console acceptance against an authentication-enabled gateway
+8. Native sandbox validation on supported platforms only when level 4 readiness is claimed
+9. Broker-backed queue validation only when RabbitMQ or Redis support is claimed
+
+Current baseline blockers:
+
+- the readiness matrix still needs to be rerun on supported Node 22
+- protected web-console acceptance against an authenticated gateway has not yet been recorded
+
+Conditional blockers:
+
+- RabbitMQ and Redis drivers are implemented locally, but live-broker validation is still incomplete
+- Linux native sandbox validation is still incomplete for Rust level 4 claims
 
 ## Release Summary
 
@@ -46,32 +68,61 @@ Implemented and locally verified:
 - observability metrics and tracing wiring
 - web console core flows, including authenticated API-key session support
 - standalone scheduler app and gateway job routes
-- connector worker webhook flow, polling support, and queue lifecycle contract
+- connector worker webhook flow, polling support, concrete RabbitMQ and Redis queue drivers, and default gateway queue dispatch
 - TypeScript tool sandbox levels 0 through 3
+- repository-wide `verify` gate
+- real-provider smoke path through the existing `openai` provider integration
+- Windows native sandbox release build path
 
 Implemented but not fully release-closed:
 
-- queue connectors need concrete RabbitMQ and Redis driver implementations before broker-backed production claims
-- Rust sandbox level 4 integration exists, with local Windows build evidence now recorded; Linux build validation is still pending
-- several older OpenSpec task files lag behind the code and verification state
+- protected web-console acceptance still needs a recorded run against a protected gateway
+- Rust sandbox level 4 integration exists, with local Windows build evidence recorded; Linux build validation is still pending
+- broker-backed queue drivers exist with unit coverage and runtime wiring, but live-broker validation is not yet recorded
 
 Not release-ready to claim today:
 
-- full repository readiness, because `verify` is still failing
+- baseline deployment readiness on the officially supported runtime, until Node 22 evidence is recorded
 - production RabbitMQ/Redis queue-driver support
 - complete binary-backed Rust sandbox support on both supported platforms
+
+## Real Provider Smoke Evidence
+
+Recorded on March 12, 2026.
+
+Procedure:
+
+1. Set operator-local environment variables `SENCLAW_OPENAI_API_KEY`, `SENCLAW_OPENAI_BASE_URL`, and `SENCLAW_OPENAI_MODEL`.
+2. Run `corepack pnpm run test:provider-smoke`.
+3. Confirm the temporary run completes and the script prints a completed status plus the assistant response.
+
+Recorded result:
+
+- base URL: `https://ark.cn-beijing.volces.com/api/coding/v3`
+- model: `doubao-seed-2.0-pro`
+- final status: `completed`
+- assistant response: `OK`
+
+Expected failure modes:
+
+- missing env vars: the script fails fast with a configuration error
+- invalid key or provider auth failure: the run fails with a provider error that remains diagnosable in script output
+- quota, endpoint, or network issue: the run fails without silently falling back to mock behavior
 
 ## Subsystem Status
 
 ### Core Runtime Foundation
 
-Status: implemented, tested, blocked only by repository-wide `verify`
+Status: implemented and locally green
 
 Evidence:
 
-- build passes
-- unit and integration suites pass
+- build, unit, integration, and verify commands all pass locally
 - gateway, agent runner, and tool host all start under current workspace scripts
+
+Remaining blocker:
+
+- supported-runtime rerun on Node 22
 
 ### Persistent Storage
 
@@ -84,7 +135,7 @@ Evidence:
 
 Remaining blocker:
 
-- repository-wide `verify` cleanup
+- supported-runtime rerun on Node 22 as part of the final baseline evidence
 
 ### API Authentication
 
@@ -94,7 +145,7 @@ Evidence:
 
 - protected gateway routes reject missing or invalid keys
 - bootstrap and managed-key flows are covered by tests
-- web console now supports operator-provided bearer tokens
+- web console supports operator-provided bearer tokens
 
 ### Observability
 
@@ -107,24 +158,25 @@ Evidence:
 
 Remaining blocker:
 
-- repository-wide `verify` cleanup
+- supported-runtime rerun on Node 22 as part of the final baseline evidence
 
 ### Web Console
 
-Status: functionally usable, not yet eligible for a full release-ready claim
+Status: functionally usable, awaiting final acceptance evidence
 
 Evidence:
 
 - authenticated API-key session support is implemented in the header UI
-- protected requests now attach `Authorization: Bearer <token>`
+- protected requests attach `Authorization: Bearer <token>`
 - protected requests fail fast with a recoverable UI prompt when no token is configured
 - `204 No Content` delete flows no longer throw parse errors
 - dedicated web auth/session tests pass
+- the operator checklist exists in [apps/web/README.md](./apps/web/README.md)
 
 Remaining blockers:
 
-- repository-wide `verify` cleanup
-- explicit manual web-console verification against a protected gateway still needs to be recorded in the current release-alignment change
+- explicit manual acceptance against a protected gateway still needs to be recorded
+- supported-runtime rerun on Node 22 as part of the final baseline evidence
 
 ### CLI Tool
 
@@ -142,18 +194,21 @@ Remaining blockers:
 
 ### Connector Worker
 
-Status: partially release-ready
+Status: usable for webhook, polling, and broker-backed queue development flows, but not yet live-broker claim ready
 
 Evidence:
 
 - webhook flow is implemented and integration-tested
 - polling connector exists and change detection is covered by unit tests
-- queue lifecycle integration exists through the `QueueDriver` abstraction and runtime lifecycle wiring
+- queue lifecycle integration exists through `BrokerQueueDriver` plus concrete RabbitMQ and Redis drivers
+- queue config validation covers provider-specific RabbitMQ and Redis schemas
+- unit tests cover driver dispatch, recovery, ack, nack, requeue, and dead-letter behavior
 
 Remaining blockers:
 
-- RabbitMQ and Redis concrete drivers are not bundled yet
-- queue reconnect, retry, ack/nack, and dead-letter semantics are not yet closed at the broker-driver level
+- live RabbitMQ validation is not yet recorded
+- live Redis validation is not yet recorded
+- release-ready broker-backed queue claims should stay disabled until that evidence exists
 
 ### Scheduler
 
@@ -164,11 +219,11 @@ Evidence:
 - standalone scheduler process is the active runtime model
 - gateway job CRUD plus execution history are implemented
 - scheduler unit tests and integration tests pass
-- manual restart/persistence validation has already been recorded in the scheduler change
+- manual restart and persistence validation has already been recorded in the scheduler change
 
-Remaining blockers:
+Remaining blocker:
 
-- repository-wide `verify` cleanup
+- supported-runtime rerun on Node 22 as part of the final baseline evidence
 
 ### Tool Sandbox
 
@@ -179,11 +234,13 @@ Evidence:
 - isolation levels 0 through 3 are covered by unit and integration tests
 - level 4 Rust runner contract is integrated into the host
 - the current unit suite includes a CLI-contract test that uses a real binary when one is already present locally
+- Windows native sandbox build evidence was revalidated on March 12, 2026
+- CI now includes an explicit release build step for `native/sandbox-runner`
 
 Remaining blockers:
 
-- dedicated Linux `cargo build` evidence is not yet recorded as release verification
-- binary-backed validation is not yet formalized in CI or the release workflow
+- dedicated Linux `cargo build --release` evidence is not yet recorded as release verification
+- binary-backed validation is not yet fully closed until Linux evidence exists
 
 ## Supported Platforms
 
@@ -201,20 +258,24 @@ Required runtime versions:
 
 Use Senclaw today when all of the following are acceptable:
 
-- you can tolerate the current `verify` blocker being a release-management issue rather than a runtime failure
-- your connector needs are satisfied by webhooks or polling, or by a custom in-process `QueueDriver`
+- you are operating on a locally verified build and understand the final supported-runtime rerun is still pending
+- your connector needs are satisfied by webhooks or polling, or you are comfortable using the built-in broker drivers before live-broker release evidence is recorded
 - your sandbox threat model is covered by the current TypeScript isolation path rather than requiring fully validated native level 4 enforcement
 
-Do not claim full production readiness until:
+Do not claim full deployment readiness until:
 
-1. `pnpm run verify` is green
-2. queue-driver support is explicit about what brokers are bundled and verified
-3. Rust sandbox validation has been recorded on both Windows and Linux
-4. stale OpenSpec task files have been reconciled with current code and evidence
+1. the readiness matrix is rerun on Node 22
+2. protected web-console acceptance is recorded
+3. queue-driver support is explicit about what brokers are bundled and verified when broker-backed support is claimed
+4. Rust sandbox validation has been recorded on both Windows and Linux when native level 4 support is claimed
 
 ## Next Priority Work
 
-1. Clean up repository-wide Biome formatting drift so `pnpm run verify` becomes a real green gate.
-2. Finish the current release-alignment change for web-console manual verification and task-state reconciliation.
-3. Implement concrete RabbitMQ and Redis queue drivers behind `QueueDriver`.
-4. Record dedicated Windows and Linux native sandbox build validation.
+1. Re-run the green repository gate on Node 22 and record the evidence.
+2. Run and record protected web-console acceptance against an authenticated gateway.
+3. Record RabbitMQ and Redis live-broker validation if broker-backed support is required.
+4. Record dedicated Linux native sandbox build validation if level 4 native sandbox claims are required.
+
+
+
+

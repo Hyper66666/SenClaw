@@ -8,16 +8,17 @@ Implemented and locally verified today:
 
 - webhook ingestion
 - polling-based connectors with change detection
-- queue connector lifecycle hooks through the `QueueDriver` abstraction
-- gateway lifecycle wiring for enabled connectors
+- concrete RabbitMQ and Redis Streams queue drivers
+- default gateway queue-driver dispatch through `BrokerQueueDriver`
+- unit coverage for queue config validation, recovery, and ack/nack behavior
 
-Not yet bundled as release-ready broker support:
+Not yet release-closed:
 
-- RabbitMQ driver
-- Redis driver
-- broker-specific reconnect, dead-letter, and production retry semantics
+- live-broker validation against a real RabbitMQ instance
+- live-broker validation against a real Redis instance
+- evidence-backed release claims for broker-backed queue support
 
-That means queue connectors are currently a host-integrator feature, not a finished out-of-the-box RabbitMQ/Redis product.
+That means broker-backed queues are implemented in the repository, but Senclaw should only claim them as release-ready after real broker validation is recorded.
 
 ## Connector Types
 
@@ -49,14 +50,14 @@ Example GitHub-style connector:
 
 ### Queue
 
-Queue connectors consume messages through a runtime-provided `QueueDriver` implementation.
+Queue connectors now use the built-in `BrokerQueueDriver`, which dispatches to RabbitMQ or Redis based on `config.provider`. Embedding runtimes can still override `queueDriver` in `createServer()` when custom behavior is required.
 
-Planned production targets:
+Supported queue modes in the current implementation:
 
-- RabbitMQ
-- Redis
+- RabbitMQ queues via `amqplib`
+- Redis Streams consumer groups via `ioredis`
 
-Example target configuration shape for a future RabbitMQ driver:
+RabbitMQ configuration shape:
 
 ```json
 {
@@ -68,12 +69,19 @@ Example target configuration shape for a future RabbitMQ driver:
     "provider": "rabbitmq",
     "url": "amqp://localhost:5672",
     "queue": "senclaw-alerts",
-    "prefetch": 1
+    "exchange": "senclaw.events",
+    "exchangeType": "topic",
+    "routingKey": "alerts.created",
+    "prefetch": 1,
+    "durable": true,
+    "requeueOnFailure": true,
+    "deadLetterExchange": "senclaw.dlx",
+    "deadLetterRoutingKey": "alerts.failed"
   }
 }
 ```
 
-Example target configuration shape for a future Redis driver:
+Redis Streams configuration shape:
 
 ```json
 {
@@ -84,12 +92,28 @@ Example target configuration shape for a future Redis driver:
     "type": "queue",
     "provider": "redis",
     "url": "redis://localhost:6379",
-    "channel": "senclaw:events"
+    "stream": "senclaw:events",
+    "consumerGroup": "senclaw-workers",
+    "consumerName": "worker-a",
+    "batchSize": 10,
+    "blockMs": 1000,
+    "requeueOnFailure": false,
+    "deadLetterStream": "senclaw:events:dlq"
   }
 }
 ```
 
-Until those drivers land, queue support depends on the embedding runtime providing a compatible driver implementation.
+Current queue-driver behavior:
+
+- successful processing acknowledges and removes the consumed message
+- failed processing can requeue or dead-letter based on connector config
+- transient disconnects trigger subscription recovery with structured logs
+- startup wiring loads enabled queue connectors automatically in the gateway runtime
+
+Current validation boundary:
+
+- unit tests cover schema validation, driver dispatch, recovery, and ack/nack behavior
+- live RabbitMQ and Redis broker validation is still required before release-ready broker claims
 
 ### Polling
 

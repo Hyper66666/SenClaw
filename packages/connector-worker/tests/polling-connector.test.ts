@@ -117,8 +117,11 @@ describe("PollingConnector", () => {
     await expect(pollingConnector.poll(hashConnector)).resolves.toBe(true);
 
     expect(eventProcessor.processEvent).toHaveBeenCalledTimes(2);
-    expect(eventProcessor.processEvent).toHaveBeenLastCalledWith(hashConnector, {
-      message: "changed",
-    });
+    expect(eventProcessor.processEvent).toHaveBeenLastCalledWith(
+      hashConnector,
+      {
+        message: "changed",
+      },
+    );
   });
 });

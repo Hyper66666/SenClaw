@@ -18,8 +18,10 @@
   "dependencies": {
     "@senclaw/protocol": "workspace:*",
     "@senclaw/storage": "workspace:*",
-    "jsonpath-plus": "^10.2.0",
-    "handlebars": "^4.7.8"
+    "amqplib": "^0.10.9",
+    "handlebars": "^4.7.8",
+    "ioredis": "^5.10.0",
+    "jsonpath-plus": "^10.2.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.5",

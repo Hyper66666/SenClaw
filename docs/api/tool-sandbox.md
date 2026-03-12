@@ -8,13 +8,14 @@ Locally verified today:
 
 - `level: 0` through `level: 3` behavior is covered by unit and integration tests
 - the host integrates a `level: 4` Rust-runner contract path
-- Windows `cargo build --release --manifest-path native/sandbox-runner/Cargo.toml` was validated locally on March 12, 2026
+- Windows `cargo build --release --manifest-path native/sandbox-runner/Cargo.toml` was revalidated locally on March 12, 2026
 - the unit suite covers both the missing-runner error path and the CLI contract against a real Rust binary when the binary is present locally
+- CI includes an explicit release build step for `native/sandbox-runner`
 
 Not yet release-closed:
 
-- dedicated Linux `cargo build` evidence recorded for the current release-alignment change
-- binary-backed validation still needs to be formalized in CI or release workflow docs
+- dedicated Linux `cargo build --release` evidence recorded for the current release-alignment change
+- binary-backed validation still needs a completed Linux verification run before cross-platform readiness can be claimed
 
 ## Isolation Levels
 
@@ -114,6 +115,25 @@ Release build command:
 ```bash
 cargo build --release --manifest-path native/sandbox-runner/Cargo.toml
 ```
+
+## Native Release Verification Checklist
+
+Windows:
+
+1. ensure the Rust MSVC toolchain is installed
+2. run `cargo build --release --manifest-path native/sandbox-runner/Cargo.toml`
+3. run the tool-host test suite or the dedicated level 4 integration path against the built binary
+
+Linux:
+
+1. ensure the Rust GNU toolchain plus system linker prerequisites are installed
+2. run `cargo build --release --manifest-path native/sandbox-runner/Cargo.toml`
+3. run the same binary-backed level 4 verification path and record the result
+
+Current recorded evidence:
+
+- Windows release build: passed on March 12, 2026
+- Linux release build: not yet recorded
 
 ## Security Caveat
 

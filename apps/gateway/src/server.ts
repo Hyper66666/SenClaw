@@ -411,8 +411,6 @@ export async function createServer(options: CreateServerOptions = {}): Promise<{
     },
   );
 
-
-
   const connectorRepo = storage?.connectors ?? {
     create: async () => ({
       id: "",
@@ -478,9 +476,12 @@ export async function createServer(options: CreateServerOptions = {}): Promise<{
       connectorEventRepo,
     );
     webhookConnector = new connectorWorker.WebhookConnector(eventProcessor);
-    queueConnector = options.queueDriver
-      ? new connectorWorker.QueueConnector(eventProcessor, options.queueDriver)
-      : null;
+    const queueDriver =
+      options.queueDriver ?? new connectorWorker.BrokerQueueDriver();
+    queueConnector = new connectorWorker.QueueConnector(
+      eventProcessor,
+      queueDriver,
+    );
     pollingConnector = new connectorWorker.PollingConnector(
       eventProcessor,
       options.pollingFetcher,
@@ -526,7 +527,18 @@ export async function createServer(options: CreateServerOptions = {}): Promise<{
   };
 
   for (const connector of await connectorRepo.list({ enabled: true })) {
-    await connectorLifecycle.sync(connector);
+    try {
+      await connectorLifecycle.sync(connector);
+    } catch (error) {
+      logger.error(
+        {
+          error,
+          connectorId: connector.id,
+          connectorType: connector.type,
+        },
+        "Failed to initialize connector lifecycle",
+      );
+    }
   }
 
   app.addHook("onClose", async () => {

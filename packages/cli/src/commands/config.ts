@@ -3,7 +3,9 @@ import chalk from "chalk";
 import { getConfigValue, setConfigValue } from "../lib/config.js";
 
 export function configCommand(program: Command) {
-  const config = program.command("config").description("Manage CLI configuration");
+  const config = program
+    .command("config")
+    .description("Manage CLI configuration");
 
   config
     .command("set <key> <value>")

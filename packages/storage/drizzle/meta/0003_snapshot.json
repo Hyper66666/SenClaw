@@ -140,23 +140,17 @@
       "indexes": {
         "api_keys_lookup_hash_idx": {
           "name": "api_keys_lookup_hash_idx",
-          "columns": [
-            "lookup_hash"
-          ],
+          "columns": ["lookup_hash"],
           "isUnique": true
         },
         "api_keys_key_hash_idx": {
           "name": "api_keys_key_hash_idx",
-          "columns": [
-            "key_hash"
-          ],
+          "columns": ["key_hash"],
           "isUnique": false
         },
         "api_keys_revoked_at_idx": {
           "name": "api_keys_revoked_at_idx",
-          "columns": [
-            "revoked_at"
-          ],
+          "columns": ["revoked_at"],
           "isUnique": false
         }
       },
@@ -242,23 +236,17 @@
       "indexes": {
         "audit_logs_key_id_idx": {
           "name": "audit_logs_key_id_idx",
-          "columns": [
-            "key_id"
-          ],
+          "columns": ["key_id"],
           "isUnique": false
         },
         "audit_logs_timestamp_idx": {
           "name": "audit_logs_timestamp_idx",
-          "columns": [
-            "timestamp"
-          ],
+          "columns": ["timestamp"],
           "isUnique": false
         },
         "audit_logs_status_idx": {
           "name": "audit_logs_status_idx",
-          "columns": [
-            "status"
-          ],
+          "columns": ["status"],
           "isUnique": false
         }
       },
@@ -267,12 +255,8 @@
           "name": "audit_logs_key_id_api_keys_id_fk",
           "tableFrom": "audit_logs",
           "tableTo": "api_keys",
-          "columnsFrom": [
-            "key_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["key_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -351,23 +335,17 @@
       "indexes": {
         "connector_events_connector_id_idx": {
           "name": "connector_events_connector_id_idx",
-          "columns": [
-            "connector_id"
-          ],
+          "columns": ["connector_id"],
           "isUnique": false
         },
         "connector_events_status_idx": {
           "name": "connector_events_status_idx",
-          "columns": [
-            "status"
-          ],
+          "columns": ["status"],
           "isUnique": false
         },
         "connector_events_received_at_idx": {
           "name": "connector_events_received_at_idx",
-          "columns": [
-            "received_at"
-          ],
+          "columns": ["received_at"],
           "isUnique": false
         }
       },
@@ -376,12 +354,8 @@
           "name": "connector_events_connector_id_connectors_id_fk",
           "tableFrom": "connector_events",
           "tableTo": "connectors",
-          "columnsFrom": [
-            "connector_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["connector_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -389,12 +363,8 @@
           "name": "connector_events_run_id_runs_id_fk",
           "tableFrom": "connector_events",
           "tableTo": "runs",
-          "columnsFrom": [
-            "run_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["run_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -481,23 +451,17 @@
       "indexes": {
         "connectors_type_idx": {
           "name": "connectors_type_idx",
-          "columns": [
-            "type"
-          ],
+          "columns": ["type"],
           "isUnique": false
         },
         "connectors_enabled_idx": {
           "name": "connectors_enabled_idx",
-          "columns": [
-            "enabled"
-          ],
+          "columns": ["enabled"],
           "isUnique": false
         },
         "connectors_agent_id_idx": {
           "name": "connectors_agent_id_idx",
-          "columns": [
-            "agent_id"
-          ],
+          "columns": ["agent_id"],
           "isUnique": false
         }
       },
@@ -506,12 +470,8 @@
           "name": "connectors_agent_id_agents_id_fk",
           "tableFrom": "connectors",
           "tableTo": "agents",
-          "columnsFrom": [
-            "agent_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["agent_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -576,23 +536,17 @@
       "indexes": {
         "job_executions_job_id_idx": {
           "name": "job_executions_job_id_idx",
-          "columns": [
-            "job_id"
-          ],
+          "columns": ["job_id"],
           "isUnique": false
         },
         "job_executions_scheduled_at_idx": {
           "name": "job_executions_scheduled_at_idx",
-          "columns": [
-            "scheduled_at"
-          ],
+          "columns": ["scheduled_at"],
           "isUnique": false
         },
         "job_executions_status_idx": {
           "name": "job_executions_status_idx",
-          "columns": [
-            "status"
-          ],
+          "columns": ["status"],
           "isUnique": false
         }
       },
@@ -601,12 +555,8 @@
           "name": "job_executions_job_id_scheduled_jobs_id_fk",
           "tableFrom": "job_executions",
           "tableTo": "scheduled_jobs",
-          "columnsFrom": [
-            "job_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["job_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -614,12 +564,8 @@
           "name": "job_executions_run_id_runs_id_fk",
           "tableFrom": "job_executions",
           "tableTo": "runs",
-          "columnsFrom": [
-            "run_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["run_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -684,9 +630,7 @@
       "indexes": {
         "messages_run_id_idx": {
           "name": "messages_run_id_idx",
-          "columns": [
-            "run_id"
-          ],
+          "columns": ["run_id"],
           "isUnique": false
         }
       },
@@ -856,23 +800,17 @@
       "indexes": {
         "scheduled_jobs_agent_id_idx": {
           "name": "scheduled_jobs_agent_id_idx",
-          "columns": [
-            "agent_id"
-          ],
+          "columns": ["agent_id"],
           "isUnique": false
         },
         "scheduled_jobs_enabled_idx": {
           "name": "scheduled_jobs_enabled_idx",
-          "columns": [
-            "enabled"
-          ],
+          "columns": ["enabled"],
           "isUnique": false
         },
         "scheduled_jobs_next_run_at_idx": {
           "name": "scheduled_jobs_next_run_at_idx",
-          "columns": [
-            "next_run_at"
-          ],
+          "columns": ["next_run_at"],
           "isUnique": false
         }
       },
@@ -881,12 +819,8 @@
           "name": "scheduled_jobs_agent_id_agents_id_fk",
           "tableFrom": "scheduled_jobs",
           "tableTo": "agents",
-          "columnsFrom": [
-            "agent_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["agent_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }

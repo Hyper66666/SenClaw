@@ -93,6 +93,24 @@ const SenclawConfigSchema = z.object({
 
 export type SenclawConfig = z.infer<typeof SenclawConfigSchema>;
 
+const ProviderSmokeConfigSchema = z.object({
+  apiKey: z.string().min(1),
+  baseURL: z.string().url(),
+  model: z.string().min(1),
+  prompt: z.string().min(1).default("Reply with the single word OK."),
+  timeoutMs: z.coerce.number().int().positive().default(60_000),
+});
+
+export type ProviderSmokeConfig = z.infer<typeof ProviderSmokeConfigSchema>;
+
+const PROVIDER_SMOKE_ENV_KEY_MAP = {
+  apiKey: "SENCLAW_OPENAI_API_KEY",
+  baseURL: "SENCLAW_OPENAI_BASE_URL",
+  model: "SENCLAW_OPENAI_MODEL",
+  prompt: "SENCLAW_SMOKE_PROMPT",
+  timeoutMs: "SENCLAW_SMOKE_TIMEOUT_MS",
+} as const satisfies Record<keyof ProviderSmokeConfig, string>;
+
 const ENV_KEY_MAP: Record<keyof SenclawConfig, string> = {
   logLevel: "SENCLAW_LOG_LEVEL",
   gatewayPort: "SENCLAW_GATEWAY_PORT",
@@ -124,6 +142,32 @@ function readEnvValues(): Record<string, unknown> {
     }
   }
   return raw;
+}
+
+export function loadProviderSmokeConfig(
+  env: NodeJS.ProcessEnv = process.env,
+): ProviderSmokeConfig {
+  const raw = {
+    apiKey: normalizeOptionalString(env.SENCLAW_OPENAI_API_KEY),
+    baseURL: normalizeOptionalString(env.SENCLAW_OPENAI_BASE_URL),
+    model: normalizeOptionalString(env.SENCLAW_OPENAI_MODEL),
+    prompt: normalizeOptionalString(env.SENCLAW_SMOKE_PROMPT),
+    timeoutMs: env.SENCLAW_SMOKE_TIMEOUT_MS,
+  };
+
+  const result = ProviderSmokeConfigSchema.safeParse(raw);
+  if (!result.success) {
+    const issues = result.error.issues
+      .map((issue) => {
+        const field = issue.path.join(".") as keyof ProviderSmokeConfig;
+        const envVar = PROVIDER_SMOKE_ENV_KEY_MAP[field] ?? field;
+        return `  ${envVar}: ${issue.message}`;
+      })
+      .join("\n");
+    throw new Error(`Invalid provider smoke configuration:\n${issues}`);
+  }
+
+  return result.data;
 }
 
 export function loadConfig(workspaceRoot?: string): SenclawConfig {

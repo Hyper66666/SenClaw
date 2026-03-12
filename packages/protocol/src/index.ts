@@ -80,6 +80,8 @@ export type {
   IConnectorRepository,
   PollingConfig,
   QueueConfig,
+  RabbitMqQueueConfig,
+  RedisQueueConfig,
   Transformation,
   TransformationFilter,
   UpdateConnector,
