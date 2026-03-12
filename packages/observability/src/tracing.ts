@@ -1,12 +1,12 @@
 import {
-  context,
-  propagation,
-  trace,
-  SpanKind,
-  SpanStatusCode,
   type Attributes,
   type Context,
   type Span,
+  SpanKind,
+  SpanStatusCode,
+  context,
+  propagation,
+  trace,
 } from "@opentelemetry/api";
 import { getNodeAutoInstrumentations } from "@opentelemetry/auto-instrumentations-node";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";

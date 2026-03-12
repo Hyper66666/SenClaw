@@ -1,11 +1,11 @@
 import {
   Counter,
-  Gauge,
-  Histogram,
-  Registry,
   type CounterConfiguration,
+  Gauge,
   type GaugeConfiguration,
+  Histogram,
   type HistogramConfiguration,
+  Registry,
 } from "prom-client";
 export * from "./tracing.js";
 

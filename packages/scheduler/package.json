@@ -1,0 +1,23 @@
+{
+  "name": "@senclaw/scheduler",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "files": ["dist"],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b"
+  },
+  "dependencies": {
+    "@senclaw/observability": "workspace:^",
+    "@senclaw/protocol": "workspace:^",
+    "cron-parser": "^4.9.0"
+  }
+}

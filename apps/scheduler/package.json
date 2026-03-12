@@ -1,5 +1,5 @@
 {
-  "name": "@senclaw/scheduler",
+  "name": "@senclaw/scheduler-app",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -16,5 +16,11 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc -b",
     "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@senclaw/config": "workspace:^",
+    "@senclaw/logging": "workspace:^",
+    "@senclaw/scheduler": "workspace:^",
+    "@senclaw/storage": "workspace:^"
   }
 }

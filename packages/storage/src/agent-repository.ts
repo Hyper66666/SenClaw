@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { eq } from "drizzle-orm";
 import type { Agent, CreateAgent, IAgentRepository } from "@senclaw/protocol";
+import { eq } from "drizzle-orm";
 import type { StorageDatabase } from "./db.js";
 import { observeDbQuery } from "./metrics.js";
 import { agentsTable } from "./schema.js";

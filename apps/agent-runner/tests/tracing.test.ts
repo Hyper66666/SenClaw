@@ -1,14 +1,14 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { LanguageModel } from "ai";
 import { InMemorySpanExporter } from "@opentelemetry/sdk-trace-base";
 import { initializeTracing, shutdownTracing } from "@senclaw/observability";
+import { ToolRegistry } from "@senclaw/tool-runner-host";
+import type { LanguageModel } from "ai";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { executeRun } from "../src/execution-loop.js";
+import { registerProviderFactory } from "../src/model-provider.js";
 import {
   InMemoryMessageRepository,
   InMemoryRunRepository,
 } from "../src/repositories.js";
-import { registerProviderFactory } from "../src/model-provider.js";
-import { executeRun } from "../src/execution-loop.js";
-import { ToolRegistry } from "@senclaw/tool-runner-host";
 
 const aiMocks = vi.hoisted(() => ({
   generateTextMock: vi.fn(),

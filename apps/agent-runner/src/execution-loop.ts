@@ -1,5 +1,4 @@
 import { performance } from "node:perf_hooks";
-import { generateText, stepCountIs, tool as aiTool } from "ai";
 import { createChildLogger, createLogger } from "@senclaw/logging";
 import {
   getMetricsRegistry,
@@ -15,6 +14,7 @@ import type {
   ToolResult,
 } from "@senclaw/protocol";
 import type { ToolRegistry } from "@senclaw/tool-runner-host";
+import { tool as aiTool, generateText, stepCountIs } from "ai";
 import { resolveModel } from "./model-provider.js";
 
 const logger = createLogger(

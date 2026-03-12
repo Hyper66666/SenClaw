@@ -1,9 +1,9 @@
-import { describe, expect, it, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import {
-  MetricsRegistry,
-  InMemoryMetrics,
   type HealthCheck,
   type HealthCheckResult,
+  InMemoryMetrics,
+  MetricsRegistry,
 } from "../src/index.js";
 
 describe("HealthCheck interface", () => {

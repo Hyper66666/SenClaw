@@ -1,6 +1,6 @@
-import type { FastifyInstance } from "fastify";
-import { CreateAgentSchema } from "@senclaw/protocol";
 import type { AgentService } from "@senclaw/agent-runner";
+import { CreateAgentSchema } from "@senclaw/protocol";
+import type { FastifyInstance } from "fastify";
 import { readRoles, requireRoles, writeRoles } from "../auth/authorization.js";
 
 export async function agentRoutes(

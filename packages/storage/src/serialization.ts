@@ -1,10 +1,10 @@
-import { z } from "zod/v4";
 import {
-  ProviderConfigSchema,
-  ToolCallSchema,
   type ProviderConfig,
+  ProviderConfigSchema,
   type ToolCall,
+  ToolCallSchema,
 } from "@senclaw/protocol";
+import { z } from "zod/v4";
 
 const ToolsSchema = z.array(z.string());
 const ToolCallsSchema = z.array(ToolCallSchema);

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { appId, defaultPort, createWebDescriptor } from "../src/index";
+import { appId, createWebDescriptor, defaultPort } from "../src/index";
 
 describe("web", () => {
   it("exposes the expected descriptor", () => {

@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { asc, eq } from "drizzle-orm";
 import type { IRunRepository, Run, RunStatus } from "@senclaw/protocol";
+import { asc, eq } from "drizzle-orm";
 import type { StorageDatabase } from "./db.js";
 import { observeDbQuery } from "./metrics.js";
 import { runsTable } from "./schema.js";

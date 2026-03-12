@@ -1,5 +1,5 @@
-import { asc, eq } from "drizzle-orm";
 import type { IMessageRepository, Message } from "@senclaw/protocol";
+import { asc, eq } from "drizzle-orm";
 import type { StorageDatabase } from "./db.js";
 import { observeDbQuery } from "./metrics.js";
 import { messagesTable } from "./schema.js";

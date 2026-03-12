@@ -1,5 +1,5 @@
-import type { FastifyInstance } from "fastify";
 import type { HealthCheck } from "@senclaw/observability";
+import type { FastifyInstance } from "fastify";
 
 export async function healthRoutes(
   app: FastifyInstance,

@@ -1,4 +1,3 @@
-import Fastify from "fastify";
 import {
   AgentService,
   InMemoryAgentRepository,
@@ -13,6 +12,9 @@ import {
   shouldSampleLog,
 } from "@senclaw/logging";
 import {
+  type HealthCheck,
+  type TraceExporter,
+  type TracingSpan,
   configureMetricsRegistry,
   extractTraceContext,
   initializeTracing,
@@ -20,12 +22,11 @@ import {
   setSpanError,
   setSpanOk,
   startSpan,
-  type TraceExporter,
-  type TracingSpan,
-  type HealthCheck,
 } from "@senclaw/observability";
+import { SchedulerService } from "@senclaw/scheduler";
 import { createStorage } from "@senclaw/storage";
 import { ToolRegistry, registerBuiltinTools } from "@senclaw/tool-runner-host";
+import Fastify from "fastify";
 import type { DestinationStream, LevelWithSilent, Logger } from "pino";
 import { ApiKeyService } from "./auth/api-key-service.js";
 import {
@@ -36,10 +37,20 @@ import { authPlugin } from "./plugins/auth.js";
 import { correlationIdPlugin } from "./plugins/correlation-id.js";
 import { errorHandlerPlugin } from "./plugins/error-handler.js";
 import { agentRoutes } from "./routes/agents.js";
+import {
+  type ConnectorLifecycle,
+  connectorRoutes,
+} from "./routes/connectors.js";
 import { healthRoutes } from "./routes/health.js";
+import { jobRoutes } from "./routes/jobs.js";
 import { keyRoutes } from "./routes/keys.js";
 import { runRoutes } from "./routes/runs.js";
 import { taskRoutes } from "./routes/tasks.js";
+import { webhookRoutes } from "./routes/webhooks.js";
+import {
+  InMemoryExecutionRepository,
+  InMemoryJobRepository,
+} from "./scheduler-repositories.js";
 
 function resolveMetricPath(request: import("fastify").FastifyRequest): string {
   const routePath =
@@ -51,10 +62,44 @@ function resolveMetricPath(request: import("fastify").FastifyRequest): string {
   return routePath ?? request.url.split("?")[0] ?? request.url;
 }
 
+type RuntimeConnector = import("@senclaw/protocol").Connector;
+
+type QueueMessageLike = {
+  payload: unknown;
+  ack(): Promise<void> | void;
+  nack(requeue?: boolean): Promise<void> | void;
+};
+
+interface QueueDriverLike {
+  subscribe(
+    connector: RuntimeConnector,
+    onMessage: (message: QueueMessageLike) => Promise<void>,
+  ): Promise<{ close(): Promise<void> | void }>;
+}
+
+interface PollingFetcherLike {
+  fetch(
+    url: string,
+    init?: {
+      method?: string;
+      headers?: Record<string, string>;
+    },
+  ): Promise<{
+    ok: boolean;
+    status: number;
+    headers: {
+      get(name: string): string | null;
+    };
+    text(): Promise<string>;
+  }>;
+}
+
 export interface CreateServerOptions {
   tracingExporter?: TraceExporter;
   autoInstrumentations?: boolean;
   loggerDestination?: DestinationStream;
+  queueDriver?: QueueDriverLike;
+  pollingFetcher?: PollingFetcherLike;
 }
 
 const HIGH_VOLUME_PATHS = new Set(["/health", "/metrics"]);
@@ -356,6 +401,139 @@ export async function createServer(options: CreateServerOptions = {}): Promise<{
     storage?.messages ?? new InMemoryMessageRepository(),
   );
 
+  const schedulerService = new SchedulerService(
+    agentService,
+    storage?.jobs ?? new InMemoryJobRepository(),
+    storage?.executions ?? new InMemoryExecutionRepository(),
+    {
+      tickIntervalMs: config.schedulerTickIntervalMs,
+      logger: createChildLogger(logger, { component: "scheduler" }),
+    },
+  );
+
+
+
+  const connectorRepo = storage?.connectors ?? {
+    create: async () => ({
+      id: "",
+      name: "",
+      type: "webhook" as const,
+      agentId: "",
+      config: { type: "webhook" as const, secret: "" },
+      transformation: {},
+      enabled: true,
+      createdAt: "",
+      updatedAt: "",
+    }),
+    get: async () => undefined,
+    list: async () => [],
+    update: async () => undefined,
+    delete: async () => false,
+    updateLastEventAt: async () => {},
+  };
+  const connectorEventRepo = storage?.connectorEvents ?? {
+    create: async () => ({
+      id: "",
+      connectorId: "",
+      payload: "",
+      status: "pending" as const,
+      receivedAt: "",
+    }),
+    get: async () => undefined,
+    listByConnectorId: async () => [],
+    update: async () => {},
+  };
+
+  // Connector worker setup - use dynamic import to avoid build-time dependency
+  let eventProcessor: {
+    processEvent(connector: RuntimeConnector, payload: unknown): Promise<void>;
+  } | null;
+  let webhookConnector: {
+    validateWebhook(
+      connector: RuntimeConnector,
+      signature?: string,
+      rawBody?: string,
+    ): void;
+    handleWebhook(
+      connector: RuntimeConnector,
+      payload: unknown,
+      signature?: string,
+      rawBody?: string,
+    ): Promise<void>;
+  } | null;
+  let queueConnector: {
+    start(connector: RuntimeConnector): Promise<unknown>;
+    stop(connectorId?: string): Promise<void>;
+  } | null;
+  let pollingConnector: {
+    start(connector: RuntimeConnector): void;
+    stop(connectorId?: string): void;
+  } | null;
+
+  try {
+    const connectorWorkerModule = "@senclaw/connector-worker";
+    const connectorWorker = await import(connectorWorkerModule);
+    eventProcessor = new connectorWorker.EventProcessor(
+      agentService,
+      connectorEventRepo,
+    );
+    webhookConnector = new connectorWorker.WebhookConnector(eventProcessor);
+    queueConnector = options.queueDriver
+      ? new connectorWorker.QueueConnector(eventProcessor, options.queueDriver)
+      : null;
+    pollingConnector = new connectorWorker.PollingConnector(
+      eventProcessor,
+      options.pollingFetcher,
+    );
+  } catch (error) {
+    logger.warn(
+      { error },
+      "Connector worker not available, connector features disabled",
+    );
+    eventProcessor = null;
+    webhookConnector = null;
+    queueConnector = null;
+    pollingConnector = null;
+  }
+
+  const activeEventProcessor: NonNullable<typeof eventProcessor> =
+    eventProcessor ?? {
+      processEvent: async () => undefined,
+    };
+
+  const connectorLifecycle: ConnectorLifecycle = {
+    sync: async (connector) => {
+      await queueConnector?.stop(connector.id);
+      pollingConnector?.stop(connector.id);
+
+      if (!connector.enabled) {
+        return;
+      }
+
+      if (connector.type === "queue") {
+        await queueConnector?.start(connector);
+        return;
+      }
+
+      if (connector.type === "polling") {
+        pollingConnector?.start(connector);
+      }
+    },
+    stop: async (connectorId) => {
+      await queueConnector?.stop(connectorId);
+      pollingConnector?.stop(connectorId);
+    },
+  };
+
+  for (const connector of await connectorRepo.list({ enabled: true })) {
+    await connectorLifecycle.sync(connector);
+  }
+
+  app.addHook("onClose", async () => {
+    await queueConnector?.stop();
+    pollingConnector?.stop();
+  });
+
   await app.register(agentRoutes, {
     prefix: "/api/v1/agents",
     agentService,
@@ -369,6 +547,25 @@ export async function createServer(options: CreateServerOptions = {}): Promise<{
   await app.register(runRoutes, {
     prefix: "/api/v1/runs",
     agentService,
+  });
+
+  await app.register(jobRoutes, {
+    prefix: "/api/v1/jobs",
+    schedulerService,
+  });
+
+  await app.register(connectorRoutes, {
+    prefix: "/api/v1/connectors",
+    connectorRepo,
+    eventRepo: connectorEventRepo,
+    eventProcessor: activeEventProcessor,
+    connectorLifecycle,
+  });
+
+  await app.register(webhookRoutes, {
+    prefix: "/webhooks",
+    connectorRepo,
+    webhookConnector,
   });
 
   await app.register(keyRoutes, {

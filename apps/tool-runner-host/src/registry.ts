@@ -1,5 +1,4 @@
-import { performance } from "node:perf_hooks";
-import type { z } from "zod/v4";
+﻿import { performance } from "node:perf_hooks";
 import { createChildLogger, createLogger } from "@senclaw/logging";
 import {
   getMetricsRegistry,
@@ -8,6 +7,7 @@ import {
   withActiveSpan,
 } from "@senclaw/observability";
 import type { ToolDefinition, ToolResult } from "@senclaw/protocol";
+import type { z } from "zod/v4";
 import { SandboxedToolRunner } from "./sandbox.js";
 
 export interface ToolHandler<T = unknown> {
@@ -160,7 +160,10 @@ export class ToolRegistry {
           setSpanError(span, error);
           const message =
             error instanceof Error ? error.message : String(error);
-          toolLogger.error({ error }, "Tool execution failed");
+          toolLogger.error(
+            { error, errorMessage: message },
+            "Tool execution failed",
+          );
           return { toolCallId, success: false, error: message };
         }
       },

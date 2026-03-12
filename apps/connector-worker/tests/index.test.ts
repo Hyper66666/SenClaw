@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import {
   appId,
-  defaultPort,
   createConnectorWorkerDescriptor,
+  defaultPort,
 } from "../src/index";
 
 describe("connector-worker", () => {

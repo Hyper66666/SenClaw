@@ -1,5 +1,5 @@
-{
-  "name": "@senclaw/connector-worker",
+﻿{
+  "name": "@senclaw/connector-worker-app",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -18,3 +18,4 @@
     "start": "node dist/index.js"
   }
 }
+

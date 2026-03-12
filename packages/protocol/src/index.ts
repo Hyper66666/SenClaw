@@ -51,6 +51,52 @@ export type {
   IRunRepository,
 } from "./repositories.js";
 
+export type {
+  CreateJobExecution,
+  CreateScheduledJob,
+  IExecutionRepository,
+  IJobRepository,
+  JobExecution,
+  JobExecutionStatus,
+  ScheduledJob,
+  UpdateScheduledJob,
+} from "./scheduler.js";
+
+export {
+  CreateScheduledJobSchema,
+  ScheduledJobSchema,
+  UpdateScheduledJobSchema,
+} from "./scheduler.js";
+
+export type {
+  Connector,
+  ConnectorConfig,
+  ConnectorEvent,
+  ConnectorEventStatus,
+  ConnectorType,
+  CreateConnector,
+  CreateConnectorEvent,
+  IConnectorEventRepository,
+  IConnectorRepository,
+  PollingConfig,
+  QueueConfig,
+  Transformation,
+  TransformationFilter,
+  UpdateConnector,
+  WebhookConfig,
+} from "./connector.js";
+
+export {
+  ConnectorConfigSchema,
+  CreateConnectorSchema,
+  PollingConfigSchema,
+  QueueConfigSchema,
+  TransformationFilterSchema,
+  TransformationSchema,
+  UpdateConnectorSchema,
+  WebhookConfigSchema,
+} from "./connector.js";
+
 export type { ToolDefinition, ToolSandboxConfig } from "./tool-definition.js";
 
 export { ToolResultSchema, type ToolResult } from "./tool-result.js";

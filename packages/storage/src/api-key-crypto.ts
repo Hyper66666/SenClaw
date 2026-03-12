@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
-import { compare, hash } from "bcryptjs";
+import bcrypt from "bcryptjs";
 
 const API_KEY_PREFIX = "sk_";
 const API_KEY_BODY_LENGTH = 43;
@@ -39,12 +39,12 @@ export function computeApiKeyLookupHash(value: string): string {
 }
 
 export async function hashApiKey(value: string): Promise<string> {
-  return hash(value, BCRYPT_ROUNDS);
+  return bcrypt.hash(value, BCRYPT_ROUNDS);
 }
 
 export async function verifyApiKey(
   value: string,
   keyHash: string,
 ): Promise<boolean> {
-  return compare(value, keyHash);
+  return bcrypt.compare(value, keyHash);
 }

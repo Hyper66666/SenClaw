@@ -1,4 +1,9 @@
 import { describe, expect, it } from "vitest";
+import {
+  InMemoryAgentRepository,
+  InMemoryMessageRepository,
+  InMemoryRunRepository,
+} from "../../apps/agent-runner/src/index";
 import type {
   Agent,
   CreateAgent,
@@ -8,11 +13,6 @@ import type {
   Message,
   Run,
 } from "../../packages/protocol/src/index";
-import {
-  InMemoryAgentRepository,
-  InMemoryMessageRepository,
-  InMemoryRunRepository,
-} from "../../apps/agent-runner/src/index";
 import { createStorage } from "../../packages/storage/src/index";
 
 interface RepositoryHarness {

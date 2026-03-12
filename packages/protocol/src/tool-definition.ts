@@ -5,6 +5,7 @@ export interface ToolSandboxConfig {
   maxCpu?: number;
   allowNetwork?: boolean;
   allowedDomains?: string[];
+  allowedPaths?: string[];
 }
 
 import type { z } from "zod/v4";

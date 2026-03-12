@@ -1,10 +1,10 @@
-import type { FastifyInstance } from "fastify";
 import {
   ApiKeyRoleSchema,
   CreateApiKeyRequestSchema,
   RevokeApiKeyRequestSchema,
 } from "@senclaw/protocol";
 import type { IAuditLogRepository } from "@senclaw/protocol";
+import type { FastifyInstance } from "fastify";
 import type { ApiKeyService } from "../auth/api-key-service.js";
 import { requireRoles } from "../auth/authorization.js";
 

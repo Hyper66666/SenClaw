@@ -86,10 +86,117 @@ export const auditLogsTable = sqliteTable(
   }),
 );
 
+export const scheduledJobsTable = sqliteTable(
+  "scheduled_jobs",
+  {
+    id: text("id").primaryKey(),
+    agentId: text("agent_id")
+      .notNull()
+      .references(() => agentsTable.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    cronExpression: text("cron_expression").notNull(),
+    input: text("input").notNull(),
+    enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+    allowConcurrent: integer("allow_concurrent", { mode: "boolean" })
+      .notNull()
+      .default(false),
+    timezone: text("timezone").notNull().default("UTC"),
+    maxRetries: integer("max_retries").notNull().default(0),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+    lastRunAt: text("last_run_at"),
+    nextRunAt: text("next_run_at"),
+  },
+  (table) => ({
+    agentIdIdx: index("scheduled_jobs_agent_id_idx").on(table.agentId),
+    enabledIdx: index("scheduled_jobs_enabled_idx").on(table.enabled),
+    nextRunAtIdx: index("scheduled_jobs_next_run_at_idx").on(table.nextRunAt),
+  }),
+);
+
+export const jobExecutionsTable = sqliteTable(
+  "job_executions",
+  {
+    id: text("id").primaryKey(),
+    jobId: text("job_id")
+      .notNull()
+      .references(() => scheduledJobsTable.id, { onDelete: "cascade" }),
+    runId: text("run_id").references(() => runsTable.id, {
+      onDelete: "set null",
+    }),
+    status: text("status").notNull(),
+    scheduledAt: text("scheduled_at").notNull(),
+    executedAt: text("executed_at"),
+    error: text("error"),
+  },
+  (table) => ({
+    jobIdIdx: index("job_executions_job_id_idx").on(table.jobId),
+    scheduledAtIdx: index("job_executions_scheduled_at_idx").on(
+      table.scheduledAt,
+    ),
+    statusIdx: index("job_executions_status_idx").on(table.status),
+  }),
+);
+
+export const connectorsTable = sqliteTable(
+  "connectors",
+  {
+    id: text("id").primaryKey(),
+    name: text("name").notNull(),
+    type: text("type").notNull(), // 'webhook', 'queue', 'polling'
+    agentId: text("agent_id")
+      .notNull()
+      .references(() => agentsTable.id, { onDelete: "cascade" }),
+    config: text("config").notNull(), // JSON: connector-specific configuration
+    transformation: text("transformation").notNull(), // JSON: event-to-task mapping
+    enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+    lastEventAt: text("last_event_at"),
+  },
+  (table) => ({
+    typeIdx: index("connectors_type_idx").on(table.type),
+    enabledIdx: index("connectors_enabled_idx").on(table.enabled),
+    agentIdIdx: index("connectors_agent_id_idx").on(table.agentId),
+  }),
+);
+
+export const connectorEventsTable = sqliteTable(
+  "connector_events",
+  {
+    id: text("id").primaryKey(),
+    connectorId: text("connector_id")
+      .notNull()
+      .references(() => connectorsTable.id, { onDelete: "cascade" }),
+    payload: text("payload").notNull(), // JSON: raw event payload
+    transformedInput: text("transformed_input"), // extracted task input
+    status: text("status").notNull(), // 'pending', 'submitted', 'failed', 'filtered'
+    runId: text("run_id").references(() => runsTable.id, {
+      onDelete: "set null",
+    }),
+    error: text("error"),
+    receivedAt: text("received_at").notNull(),
+    processedAt: text("processed_at"),
+  },
+  (table) => ({
+    connectorIdIdx: index("connector_events_connector_id_idx").on(
+      table.connectorId,
+    ),
+    statusIdx: index("connector_events_status_idx").on(table.status),
+    receivedAtIdx: index("connector_events_received_at_idx").on(
+      table.receivedAt,
+    ),
+  }),
+);
+
 export const schema = {
   agentsTable,
   runsTable,
   messagesTable,
   apiKeysTable,
   auditLogsTable,
+  scheduledJobsTable,
+  jobExecutionsTable,
+  connectorsTable,
+  connectorEventsTable,
 };

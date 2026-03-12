@@ -1,13 +1,23 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+﻿import { existsSync } from "node:fs";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { type Server, createServer } from "node:http";
+import type { AddressInfo } from "node:net";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { InMemorySpanExporter } from "@opentelemetry/sdk-trace-base";
-import { z } from "zod/v4";
 import {
   getMetricsRegistry,
   initializeTracing,
   resetMetricsRegistry,
   shutdownTracing,
 } from "@senclaw/observability";
-import { ToolRegistry, registerBuiltinTools } from "../src/index.js";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { z } from "zod/v4";
+import {
+  SandboxedToolRunner,
+  ToolRegistry,
+  registerBuiltinTools,
+} from "../src/index.js";
 
 async function waitForFinishedSpans(
   exporter: InMemorySpanExporter,
@@ -25,15 +35,58 @@ async function waitForFinishedSpans(
   return exporter.getFinishedSpans();
 }
 
+async function startTestServer(responseBody = "network-ok") {
+  const server = createServer((_request, response) => {
+    response.writeHead(200, { "content-type": "text/plain" });
+    response.end(responseBody);
+  });
+
+  const port = await new Promise<number>((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", () => {
+      const address = server.address();
+      if (!address || typeof address === "string") {
+        reject(new Error("Expected TCP server address"));
+        return;
+      }
+
+      resolve((address as AddressInfo).port);
+    });
+  });
+
+  return { server, port };
+}
+
+function stopServer(server: Server): Promise<void> {
+  return new Promise((resolve, reject) => {
+    server.close((error) => {
+      if (error) {
+        reject(error);
+        return;
+      }
+
+      resolve();
+    });
+  });
+}
+
 describe("ToolRegistry", () => {
   let registry: ToolRegistry;
+  let fixturePaths: string[];
+  let networkServers: Server[];
 
   beforeEach(() => {
     registry = new ToolRegistry(1000);
     resetMetricsRegistry();
+    fixturePaths = [];
+    networkServers = [];
   });
 
   afterEach(async () => {
+    await Promise.all(networkServers.map((server) => stopServer(server)));
+    await Promise.all(
+      fixturePaths.map((path) => rm(path, { recursive: true, force: true })),
+    );
     await shutdownTracing();
   });
 
@@ -241,6 +294,493 @@ describe("ToolRegistry", () => {
       const result = await registry.executeTool("tc-12", "sandboxed-oom", {});
       expect(result.success).toBe(false);
       expect(result.error).toContain("memory limit");
+    });
+
+    it("enforces maxCpu limits for sandboxed tools", async () => {
+      registry.register(
+        {
+          name: "sandboxed-cpu-limit",
+          description: "Consumes CPU beyond the configured budget",
+          inputSchema: z.object({}),
+          sandbox: { level: 1, timeout: 2000, maxMemory: 64, maxCpu: 10 },
+        },
+        () => {
+          const deadline = Date.now() + 1500;
+          while (Date.now() < deadline) {
+            Math.sqrt(Math.random());
+          }
+          return "unexpected";
+        },
+      );
+
+      const result = await registry.executeTool(
+        "tc-12b",
+        "sandboxed-cpu-limit",
+        {},
+      );
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("CPU limit");
+    });
+
+    it("routes level 4 tools through the Rust sandbox runner contract", async () => {
+      const runnerDir = await mkdtemp(join(tmpdir(), "senclaw-rust-runner-"));
+      fixturePaths.push(runnerDir);
+      const fakeRunnerPath = join(runnerDir, "fake-rust-runner.cjs");
+      await writeFile(
+        fakeRunnerPath,
+        [
+          'let input = "";',
+          'process.stdin.setEncoding("utf8");',
+          'process.stdin.on("data", (chunk) => { input += chunk; });',
+          'process.stdin.on("end", () => {',
+          "  const request = JSON.parse(input);",
+          "  const response = {",
+          "    ok: true,",
+          "    result: JSON.stringify({",
+          "      sandboxLevel: request.executeMessage.sandboxLevel,",
+          "      sandboxDirectory: request.executeMessage.sandboxDirectory,",
+          '      hasWorkerSource: request.workerSource.includes("process.on(\\"message\\"") || request.workerSource.includes("process.stdin.on"),',
+          "      nodePath: request.nodePath,",
+          "    }),",
+          "  };",
+          "  process.stdout.write(JSON.stringify(response));",
+          "});",
+        ].join("\n"),
+        "utf8",
+      );
+
+      registry = new ToolRegistry(
+        1000,
+        new SandboxedToolRunner({
+          defaultTimeoutMs: 1000,
+          rustRunner: {
+            command: process.execPath,
+            args: [fakeRunnerPath],
+          },
+        }),
+      );
+      registry.register(testTool, (args) => `Hello, ${args.name}!`);
+      registry.register(
+        {
+          name: "sandboxed-rust-contract",
+          description: "Uses the Rust sandbox runner contract",
+          inputSchema: z.object({}),
+          sandbox: { level: 4, timeout: 500, maxMemory: 64, maxCpu: 50 },
+        },
+        () => "handled by rust runner",
+      );
+
+      const result = await registry.executeTool(
+        "tc-12c",
+        "sandboxed-rust-contract",
+        {},
+      );
+      expect(result.success).toBe(true);
+      const payload = JSON.parse(result.content ?? "{}") as {
+        sandboxLevel: number;
+        sandboxDirectory: string;
+        hasWorkerSource: boolean;
+        nodePath: string;
+      };
+      expect(payload.sandboxLevel).toBe(4);
+      expect(payload.hasWorkerSource).toBe(true);
+      expect(payload.nodePath).toContain("node");
+      expect(payload.sandboxDirectory).toContain("senclaw-sandbox-");
+      expect(existsSync(payload.sandboxDirectory)).toBe(false);
+    });
+
+    it("surfaces a clear error when the Rust sandbox runner is unavailable", async () => {
+      registry = new ToolRegistry(
+        1000,
+        new SandboxedToolRunner({
+          defaultTimeoutMs: 1000,
+          rustRunner: {
+            command: "definitely-missing-rust-sandbox-runner",
+          },
+        }),
+      );
+      registry.register(testTool, (args) =>         `Hello, ${args.name}!`,
+      );
+      registry.register(
+        {
+          name: "sandboxed-rust-missing",
+          description: "Fails when the Rust runner is unavailable",
+          inputSchema: z.object({}),
+          sandbox: { level: 4, timeout: 500, maxMemory: 64, maxCpu: 50 },
+        },
+        () => "handled by rust runner",
+      );
+
+      const result = await registry.executeTool(
+        "tc-12d",
+        "sandboxed-rust-missing",
+        {},
+      );
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("Rust sandbox runner is unavailable");
+      expect(result.error).toContain("native/sandbox-runner");
+    });
+
+    it("validates Rust sandbox runner CLI contract with actual binary", async () => {
+      const { spawn } = await import("node:child_process");
+      const { resolve } = await import("node:path");
+      const { existsSync } = await import("node:fs");
+
+      // Locate the Rust binary (release or debug build)
+      const executableName =
+        process.platform === "win32" ? "sandbox-runner.exe" : "sandbox-runner";
+      const releasePath = resolve(
+        process.cwd(),
+        "native",
+        "target",
+        "release",
+        executableName,
+      );
+      const debugPath = resolve(
+        process.cwd(),
+        "native",
+        "target",
+        "debug",
+        executableName,
+      );
+
+      let runnerPath: string | undefined;
+      if (existsSync(releasePath)) {
+        runnerPath = releasePath;
+      } else if (existsSync(debugPath)) {
+        runnerPath = debugPath;
+      }
+
+      if (!runnerPath) {
+        console.warn(
+          "Skipping Rust CLI contract test: binary not found. Run 'cargo build' in native/sandbox-runner/",
+        );
+        return;
+      }
+
+      // Prepare a minimal request matching the SandboxRequest contract
+      const request = {
+        nodePath: process.execPath,
+        workerSource: `
+          process.stdin.setEncoding("utf8");
+          let input = "";
+          process.stdin.on("data", (chunk) => { input += chunk; });
+          process.stdin.on("end", () => {
+            const message = JSON.parse(input);
+            const result = { echo: message.args, level: message.sandboxLevel };
+            process.stdout.write(JSON.stringify({ type: "result", result: JSON.stringify(result) }));
+          });
+        `,
+        executeMessage: {
+          type: "execute",
+          handlerSource: "(args) => args",
+          args: { test: "cli-contract" },
+          sandboxLevel: 4,
+          allowNetwork: false,
+          allowedDomains: [],
+          allowedPaths: [],
+        },
+        timeoutMs: 5000,
+        maxMemoryMb: 128,
+        maxCpu: 100,
+      };
+
+      // Spawn the Rust binary and send JSON via stdin
+      const child = spawn(runnerPath, [], {
+        stdio: ["pipe", "pipe", "pipe"],
+        windowsHide: true,
+      });
+
+      let stdout = "";
+      let stderr = "";
+
+      child.stdout?.setEncoding("utf8");
+      child.stdout?.on("data", (chunk) => {
+        stdout += chunk;
+      });
+
+      child.stderr?.setEncoding("utf8");
+      child.stderr?.on("data", (chunk) => {
+        stderr += chunk;
+      });
+
+      const exitPromise = new Promise<number | null>((resolve) => {
+        child.on("exit", (code) => resolve(code));
+      });
+
+      // Write request to stdin
+      child.stdin?.end(JSON.stringify(request));
+
+      const exitCode = await exitPromise;
+
+      // Validate CLI contract: stdout contains JSON response with { ok, result }
+      expect(exitCode).toBe(0);
+      expect(stderr).toBe("");
+
+      const response = JSON.parse(stdout.trim());
+      expect(response).toHaveProperty("ok", true);
+      expect(response).toHaveProperty("result");
+
+      const result = JSON.parse(response.result);
+      expect(result).toHaveProperty("echo");
+      expect(result.echo).toEqual({ test: "cli-contract" });
+      expect(result.level).toBe(4);
+    });
+
+    it("runs level 2 sandboxed tools in a temp working directory and cleans it up", async () => {
+      registry.register(
+        {
+          name: "sandboxed-temp-dir",
+          description: "Uses a temp working directory",
+          inputSchema: z.object({}),
+          sandbox: { level: 2, timeout: 500, maxMemory: 64 },
+        },
+        async () => {
+          const fs = await import("node:fs/promises");
+          await fs.writeFile("artifact.txt", "hello from sandbox", "utf8");
+          const content = await fs.readFile("artifact.txt", "utf8");
+          return JSON.stringify({ cwd: process.cwd(), content });
+        },
+      );
+
+      const result = await registry.executeTool(
+        "tc-13",
+        "sandboxed-temp-dir",
+        {},
+      );
+      expect(result.success).toBe(true);
+      const payload = JSON.parse(result.content ?? "{}") as {
+        cwd: string;
+        content: string;
+      };
+      expect(payload.content).toBe("hello from sandbox");
+      expect(payload.cwd).not.toBe(process.cwd());
+      expect(payload.cwd).toContain("senclaw-sandbox-");
+      expect(existsSync(payload.cwd)).toBe(false);
+    });
+
+    it("blocks writes outside the sandbox temp directory for level 2 tools", async () => {
+      const fixtureDir = await mkdtemp(join(tmpdir(), "senclaw-fixture-"));
+      fixturePaths.push(fixtureDir);
+      const blockedFile = join(fixtureDir, "blocked.txt");
+
+      registry.register(
+        {
+          name: "sandboxed-block-write",
+          description: "Attempts to write outside the sandbox",
+          inputSchema: z.object({ targetPath: z.string() }),
+          sandbox: { level: 2, timeout: 500, maxMemory: 64 },
+        },
+        async (args) => {
+          const fs = await import("node:fs/promises");
+          await fs.writeFile(args.targetPath, "should fail", "utf8");
+          return "unexpected";
+        },
+      );
+
+      const result = await registry.executeTool(
+        "tc-14",
+        "sandboxed-block-write",
+        {
+          targetPath: blockedFile,
+        },
+      );
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("Access denied");
+      expect(existsSync(blockedFile)).toBe(false);
+    });
+
+    it("allows read-only access to explicitly allowed paths for level 2 tools", async () => {
+      const fixtureDir = await mkdtemp(join(tmpdir(), "senclaw-fixture-"));
+      fixturePaths.push(fixtureDir);
+      const allowedFile = join(fixtureDir, "allowed.txt");
+      await writeFile(allowedFile, "allowed-content", "utf8");
+
+      registry.register(
+        {
+          name: "sandboxed-allowed-read",
+          description: "Reads an explicitly allowed file",
+          inputSchema: z.object({ filePath: z.string() }),
+          sandbox: {
+            level: 2,
+            timeout: 500,
+            maxMemory: 64,
+            allowedPaths: [fixtureDir],
+          },
+        },
+        async (args) => {
+          const fs = await import("node:fs/promises");
+          return fs.readFile(args.filePath, "utf8");
+        },
+      );
+
+      const result = await registry.executeTool(
+        "tc-15",
+        "sandboxed-allowed-read",
+        {
+          filePath: allowedFile,
+        },
+      );
+      expect(result.success).toBe(true);
+      expect(result.content).toBe("allowed-content");
+    });
+
+    it("blocks reads outside explicitly allowed paths for level 2 tools", async () => {
+      const fixtureDir = await mkdtemp(join(tmpdir(), "senclaw-fixture-"));
+      fixturePaths.push(fixtureDir);
+      const blockedFile = join(fixtureDir, "secret.txt");
+      await writeFile(blockedFile, "secret", "utf8");
+
+      registry.register(
+        {
+          name: "sandboxed-block-read",
+          description: "Attempts to read outside allowed paths",
+          inputSchema: z.object({ filePath: z.string() }),
+          sandbox: { level: 2, timeout: 500, maxMemory: 64 },
+        },
+        async (args) => {
+          const fs = await import("node:fs/promises");
+          return fs.readFile(args.filePath, "utf8");
+        },
+      );
+
+      const result = await registry.executeTool(
+        "tc-16",
+        "sandboxed-block-read",
+        {
+          filePath: blockedFile,
+        },
+      );
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("Access denied");
+    });
+
+    it("blocks http requests when allowNetwork is false", async () => {
+      const { server, port } = await startTestServer();
+      networkServers.push(server);
+
+      registry.register(
+        {
+          name: "sandboxed-network-disabled",
+          description: "Attempts an outbound http request",
+          inputSchema: z.object({ url: z.string() }),
+          sandbox: {
+            level: 3,
+            timeout: 500,
+            maxMemory: 64,
+            allowNetwork: false,
+          },
+        },
+        (args) =>
+          new Promise((resolve, reject) => {
+            const http = require("node:http");
+            const request = http.get(args.url, (response) => {
+              let body = "";
+              response.setEncoding("utf8");
+              response.on("data", (chunk) => {
+                body += chunk;
+              });
+              response.on("end", () => resolve(body));
+            });
+            request.on("error", (error) => reject(error));
+          }),
+      );
+
+      const result = await registry.executeTool(
+        "tc-17",
+        "sandboxed-network-disabled",
+        {
+          url: `http://127.0.0.1:${port}`,
+        },
+      );
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("Network access is disabled");
+    });
+
+    it("blocks http requests to hosts outside allowedDomains", async () => {
+      const { server, port } = await startTestServer();
+      networkServers.push(server);
+
+      registry.register(
+        {
+          name: "sandboxed-network-disallowed-host",
+          description: "Attempts an http request to a disallowed host",
+          inputSchema: z.object({ url: z.string() }),
+          sandbox: {
+            level: 3,
+            timeout: 500,
+            maxMemory: 64,
+            allowNetwork: true,
+            allowedDomains: ["example.com"],
+          },
+        },
+        (args) =>
+          new Promise((resolve, reject) => {
+            const http = require("node:http");
+            const request = http.get(args.url, (response) => {
+              let body = "";
+              response.setEncoding("utf8");
+              response.on("data", (chunk) => {
+                body += chunk;
+              });
+              response.on("end", () => resolve(body));
+            });
+            request.on("error", (error) => reject(error));
+          }),
+      );
+
+      const result = await registry.executeTool(
+        "tc-18",
+        "sandboxed-network-disallowed-host",
+        {
+          url: `http://127.0.0.1:${port}`,
+        },
+      );
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("Network access denied");
+    });
+
+    it("allows http requests to hosts listed in allowedDomains", async () => {
+      const { server, port } = await startTestServer();
+      networkServers.push(server);
+
+      registry.register(
+        {
+          name: "sandboxed-network-allowed-host",
+          description: "Performs an allowed http request",
+          inputSchema: z.object({ url: z.string() }),
+          sandbox: {
+            level: 3,
+            timeout: 500,
+            maxMemory: 64,
+            allowNetwork: true,
+            allowedDomains: ["127.0.0.1"],
+          },
+        },
+        (args) =>
+          new Promise((resolve, reject) => {
+            const http = require("node:http");
+            const request = http.get(args.url, (response) => {
+              let body = "";
+              response.setEncoding("utf8");
+              response.on("data", (chunk) => {
+                body += chunk;
+              });
+              response.on("end", () => resolve(body));
+            });
+            request.on("error", (error) => reject(error));
+          }),
+      );
+
+      const result = await registry.executeTool(
+        "tc-19",
+        "sandboxed-network-allowed-host",
+        {
+          url: `http://127.0.0.1:${port}`,
+        },
+      );
+      expect(result.success).toBe(true);
+      expect(result.content).toBe("network-ok");
     });
   });
 

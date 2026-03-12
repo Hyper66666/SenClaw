@@ -1,5 +1,5 @@
-import type { FastifyInstance } from "fastify";
 import type { AgentService } from "@senclaw/agent-runner";
+import type { FastifyInstance } from "fastify";
 import { readRoles, requireRoles } from "../auth/authorization.js";
 
 export async function runRoutes(

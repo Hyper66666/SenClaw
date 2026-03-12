@@ -9,6 +9,7 @@
   "references": [
     { "path": "../protocol" },
     { "path": "../config" },
-    { "path": "../observability" }
+    { "path": "../observability" },
+    { "path": "../scheduler" }
   ]
 }

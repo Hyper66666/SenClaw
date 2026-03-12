@@ -7,8 +7,8 @@ import {
   withActiveSpan,
 } from "../../observability/src/index.ts";
 import {
-  createLogger,
   createChildLogger,
+  createLogger,
   generateCorrelationId,
   getCorrelationId,
   mostVerboseLevel,

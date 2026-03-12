@@ -8,12 +8,12 @@ import type {
   Run,
 } from "@senclaw/protocol";
 import type { ToolRegistry } from "@senclaw/tool-runner-host";
+import { type ExecutionOptions, executeRun } from "./execution-loop.js";
 import {
   InMemoryAgentRepository,
   InMemoryMessageRepository,
   InMemoryRunRepository,
 } from "./repositories.js";
-import { executeRun, type ExecutionOptions } from "./execution-loop.js";
 
 export class AgentService {
   private agentRepo: IAgentRepository;

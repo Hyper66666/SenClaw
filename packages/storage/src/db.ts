@@ -2,8 +2,8 @@ import { mkdirSync } from "node:fs";
 import { dirname, isAbsolute, resolve } from "node:path";
 import Database from "better-sqlite3";
 import {
-  drizzle,
   type BetterSQLite3Database,
+  drizzle,
 } from "drizzle-orm/better-sqlite3";
 import { schema } from "./schema.js";
 

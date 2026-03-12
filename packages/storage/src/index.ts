@@ -1,11 +1,15 @@
-import { DatabaseHealthCheck } from "./health-check.js";
 import { SqliteAgentRepository } from "./agent-repository.js";
 import { SqliteApiKeyRepository } from "./api-key-repository.js";
 import { SqliteAuditLogRepository } from "./audit-log-repository.js";
-import { SqliteMessageRepository } from "./message-repository.js";
-import { SqliteRunRepository } from "./run-repository.js";
+import { SqliteConnectorEventRepository } from "./connector-event-repository.js";
+import { SqliteConnectorRepository } from "./connector-repository.js";
 import { openDatabase } from "./db.js";
+import { SqliteExecutionRepository } from "./execution-repository.js";
+import { DatabaseHealthCheck } from "./health-check.js";
+import { SqliteJobRepository } from "./job-repository.js";
+import { SqliteMessageRepository } from "./message-repository.js";
 import { runMigrations } from "./migrate.js";
+import { SqliteRunRepository } from "./run-repository.js";
 
 export interface StorageBundle {
   agents: SqliteAgentRepository;
@@ -13,6 +17,10 @@ export interface StorageBundle {
   messages: SqliteMessageRepository;
   apiKeys: SqliteApiKeyRepository;
   auditLogs: SqliteAuditLogRepository;
+  jobs: SqliteJobRepository;
+  executions: SqliteExecutionRepository;
+  connectors: SqliteConnectorRepository;
+  connectorEvents: SqliteConnectorEventRepository;
   healthCheck: DatabaseHealthCheck;
   close(): void;
 }
@@ -28,6 +36,10 @@ export function createStorage(url: string): StorageBundle {
     messages: new SqliteMessageRepository(db),
     apiKeys: new SqliteApiKeyRepository(db),
     auditLogs: new SqliteAuditLogRepository(db),
+    jobs: new SqliteJobRepository(db),
+    executions: new SqliteExecutionRepository(db),
+    connectors: new SqliteConnectorRepository(db),
+    connectorEvents: new SqliteConnectorEventRepository(db),
     healthCheck: new DatabaseHealthCheck(() => {
       db.$client.prepare("select 1 as ok").get();
     }),
@@ -56,4 +68,8 @@ export { runMigrations } from "./migrate.js";
 export { SqliteAgentRepository } from "./agent-repository.js";
 export { SqliteRunRepository } from "./run-repository.js";
 export { SqliteMessageRepository } from "./message-repository.js";
+export { SqliteJobRepository } from "./job-repository.js";
+export { SqliteExecutionRepository } from "./execution-repository.js";
+export { SqliteConnectorRepository } from "./connector-repository.js";
+export { SqliteConnectorEventRepository } from "./connector-event-repository.js";
 export * from "./serialization.js";

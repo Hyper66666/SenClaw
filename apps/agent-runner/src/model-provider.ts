@@ -1,6 +1,6 @@
-import type { LanguageModel } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
 import type { ProviderConfig } from "@senclaw/protocol";
+import type { LanguageModel } from "ai";
 
 type ProviderFactory = (config: ProviderConfig) => LanguageModel;
 

@@ -1,14 +1,16 @@
 import { randomUUID } from "node:crypto";
-import type { ApiKeyRole } from "@senclaw/protocol";
 import rateLimit from "@fastify/rate-limit";
-import fp from "fastify-plugin";
+import type { ApiKeyRole } from "@senclaw/protocol";
 import type { IAuditLogRepository } from "@senclaw/protocol";
+import fp from "fastify-plugin";
 import type { Logger } from "pino";
 import type { ApiKeyService } from "../auth/api-key-service.js";
 
 function isPublicRoute(url: string): boolean {
   const path = url.split("?")[0] ?? url;
-  return path === "/health" || path === "/metrics";
+  return (
+    path === "/health" || path === "/metrics" || path.startsWith("/webhooks/")
+  );
 }
 
 function redactBody(body: unknown): string | null {

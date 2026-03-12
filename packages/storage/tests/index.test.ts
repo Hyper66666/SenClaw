@@ -1,9 +1,9 @@
-import { beforeEach, describe, expect, it } from "vitest";
 import {
   getMetricsRegistry,
   resetMetricsRegistry,
 } from "@senclaw/observability";
-import { createStorage, DatabaseHealthCheck } from "../src/index.js";
+import { beforeEach, describe, expect, it } from "vitest";
+import { DatabaseHealthCheck, createStorage } from "../src/index.js";
 
 describe("SqliteAgentRepository", () => {
   beforeEach(() => {

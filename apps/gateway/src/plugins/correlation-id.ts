@@ -1,5 +1,5 @@
-import fp from "fastify-plugin";
 import { generateCorrelationId, withCorrelationId } from "@senclaw/logging";
+import fp from "fastify-plugin";
 
 export const correlationIdPlugin = fp(async (app) => {
   app.addHook("onRequest", (request, reply, done) => {

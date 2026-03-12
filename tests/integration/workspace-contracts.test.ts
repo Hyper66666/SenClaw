@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   AgentSchema,
-  TaskSchema,
-  RunSchema,
   MessageSchema,
+  RunSchema,
+  TaskSchema,
   ToolResultSchema,
 } from "../../packages/protocol/src/index";
 

@@ -1,5 +1,5 @@
-import fp from "fastify-plugin";
 import type { FastifyError } from "fastify";
+import fp from "fastify-plugin";
 import { ZodError } from "zod/v4";
 
 export const errorHandlerPlugin = fp(async (app) => {

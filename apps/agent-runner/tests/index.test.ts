@@ -1,16 +1,16 @@
-import { beforeEach, describe, expect, it } from "vitest";
 import {
   getMetricsRegistry,
   resetMetricsRegistry,
 } from "@senclaw/observability";
+import { ToolRegistry, registerBuiltinTools } from "@senclaw/tool-runner-host";
+import { beforeEach, describe, expect, it } from "vitest";
+import { AgentService } from "../src/agent-service.js";
+import { executeRun } from "../src/execution-loop.js";
 import {
   InMemoryAgentRepository,
   InMemoryMessageRepository,
   InMemoryRunRepository,
 } from "../src/repositories.js";
-import { AgentService } from "../src/agent-service.js";
-import { executeRun } from "../src/execution-loop.js";
-import { ToolRegistry, registerBuiltinTools } from "@senclaw/tool-runner-host";
 
 describe("InMemoryAgentRepository", () => {
   let repo: InMemoryAgentRepository;

@@ -1,8 +1,8 @@
 import { randomUUID } from "node:crypto";
 import type {
   ApiKeyListFilters,
-  ApiKeyRole,
   ApiKeyRecord,
+  ApiKeyRole,
   AuthenticatedApiKey,
   IApiKeyRepository,
 } from "@senclaw/protocol";

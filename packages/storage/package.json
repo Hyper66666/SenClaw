@@ -22,6 +22,7 @@
     "@senclaw/config": "workspace:^",
     "@senclaw/observability": "workspace:^",
     "@senclaw/protocol": "workspace:^",
+    "@senclaw/scheduler": "workspace:^",
     "better-sqlite3": "^11.7.0",
     "drizzle-orm": "^0.36.4",
     "bcryptjs": "^2.4.3"

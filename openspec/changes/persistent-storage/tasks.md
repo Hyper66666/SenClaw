@@ -71,8 +71,8 @@
 ## 9. Verification
 
 - [x] 9.1 Run `pnpm run verify` and `pnpm run test` on Windows and confirm lint, format, type-check, and unit tests pass.
-- [ ] 9.2 Run `pnpm run verify` on Linux and confirm all checks pass.
-- [ ] 9.3 Run `pnpm run test:integration` with `SENCLAW_DB_URL=file:./test-run.db` on both platforms; confirm the integration tests pass and the database file is created; delete the file after the run.
+- [x] 9.2 Run `pnpm run verify` on Linux and confirm all checks pass.
+- [x] 9.3 Run `pnpm run test:integration` with `SENCLAW_DB_URL=file:./test-run.db` on both platforms; confirm the integration tests pass and the database file is created; delete the file after the run.
 - [x] 9.4 Run `scripts/persistence-smoke-test.mjs` with `SENCLAW_DB_URL=file:./senclaw.db`; create an agent, simulate restart, and confirm the agent is still returned by `GET /api/v1/agents` and `/health` reports healthy storage.
 - [x] 9.5 Confirm `GET /health` returns `{ "status": "healthy", "details": { "storage": { "status": "healthy" } } }` when the database is active, and omits `storage` when `SENCLAW_DB_URL` is not set.
 

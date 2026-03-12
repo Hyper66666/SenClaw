@@ -2,14 +2,19 @@ import { describe, expect, expectTypeOf, it } from "vitest";
 import {
   AgentSchema,
   CreateAgentSchema,
+  CreateScheduledJobSchema,
   type IAgentRepository,
+  type IExecutionRepository,
+  type IJobRepository,
   type IMessageRepository,
-  MessageSchema,
   type IRunRepository,
+  MessageSchema,
   ProviderConfigSchema,
   RunSchema,
+  ScheduledJobSchema,
   TaskSchema,
   ToolResultSchema,
+  UpdateScheduledJobSchema,
 } from "../src/index.js";
 
 describe("ProviderConfigSchema", () => {
@@ -224,14 +229,65 @@ describe("ToolResultSchema", () => {
   });
 });
 
+describe("ScheduledJobSchema", () => {
+  const validJob = {
+    id: "9f2c2c55-1f1f-4bd9-8bc7-a06d17d2d8d1",
+    agentId: "0f6eb7d9-8e52-467c-9763-0d96f8d7c0ef",
+    name: "Daily report",
+    cronExpression: "0 9 * * *",
+    input: "Generate the daily report",
+    enabled: true,
+    allowConcurrent: false,
+    timezone: "UTC",
+    maxRetries: 3,
+    createdAt: "2026-03-12T00:00:00.000Z",
+    updatedAt: "2026-03-12T00:00:00.000Z",
+    lastRunAt: "2026-03-12T01:00:00.000Z",
+    nextRunAt: "2026-03-13T09:00:00.000Z",
+  };
+  it("accepts a persisted scheduled job", () => {
+    const result = ScheduledJobSchema.safeParse(validJob);
+    expect(result.success).toBe(true);
+  });
+  it("rejects a job without timestamps", () => {
+    const { createdAt, ...invalidJob } = validJob;
+    const result = ScheduledJobSchema.safeParse(invalidJob);
+    expect(result.success).toBe(false);
+  });
+});
+describe("scheduler job input schemas", () => {
+  it("accepts valid create payloads", () => {
+    const result = CreateScheduledJobSchema.safeParse({
+      agentId: "0f6eb7d9-8e52-467c-9763-0d96f8d7c0ef",
+      name: "Nightly digest",
+      cronExpression: "0 0 * * *",
+      input: "Build the nightly digest",
+      allowConcurrent: false,
+      timezone: "Asia/Shanghai",
+      maxRetries: 2,
+    });
+    expect(result.success).toBe(true);
+  });
+  it("accepts partial update payloads", () => {
+    const result = UpdateScheduledJobSchema.safeParse({
+      enabled: false,
+      timezone: "America/New_York",
+    });
+    expect(result.success).toBe(true);
+  });
+});
 describe("repository interfaces", () => {
   it("exports repository contract types", () => {
     type HasAgentCreate = IAgentRepository["create"];
     type HasRunCreate = IRunRepository["create"];
     type HasMessageAppend = IMessageRepository["append"];
+    type HasJobCreate = IJobRepository["create"];
+    type HasExecutionCreate = IExecutionRepository["create"];
 
     expectTypeOf<HasAgentCreate>().toBeFunction();
     expectTypeOf<HasRunCreate>().toBeFunction();
     expectTypeOf<HasMessageAppend>().toBeFunction();
+    expectTypeOf<HasJobCreate>().toBeFunction();
+    expectTypeOf<HasExecutionCreate>().toBeFunction();
   });
 });

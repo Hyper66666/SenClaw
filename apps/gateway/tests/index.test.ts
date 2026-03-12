@@ -1,6 +1,6 @@
 import { PassThrough } from "node:stream";
-import type { FastifyInstance } from "fastify";
 import { InMemorySpanExporter } from "@opentelemetry/sdk-trace-base";
+import type { FastifyInstance } from "fastify";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createServer } from "../src/server.js";
 
