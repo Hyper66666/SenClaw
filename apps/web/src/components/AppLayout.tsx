@@ -6,11 +6,13 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
+import { useConsoleLocale } from "./LocaleProvider";
 import { Button } from "./ui/Button";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const queryClient = useQueryClient();
+  const { copy, toggleLocale } = useConsoleLocale();
   const [darkMode, setDarkMode] = useState(() => {
     if (typeof window === "undefined") {
       return false;
@@ -25,11 +27,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const [storedApiKey, setStoredApiKey] = useState(
     () => loadStoredApiKey() ?? "",
   );
-  const [sessionMessage, setSessionMessage] = useState(() =>
-    loadStoredApiKey()
-      ? "Protected API access is configured for this browser session."
-      : "Protected API operations need a gateway API key.",
-  );
+  const [sessionState, setSessionState] = useState<
+    "configured" | "missing" | "saved" | "cleared"
+  >(() => (loadStoredApiKey() ? "configured" : "missing"));
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -45,22 +45,31 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   }, [darkMode]);
 
   const navItems = [
-    { path: "/agents", label: "Agents" },
-    { path: "/runs", label: "Runs" },
-    { path: "/tasks/new", label: "Submit Task" },
-    { path: "/health", label: "Health" },
+    { path: "/agents", label: copy.layout.nav.agents },
+    { path: "/runs", label: copy.layout.nav.runs },
+    { path: "/tasks/new", label: copy.layout.nav.submitTask },
+    { path: "/health", label: copy.layout.nav.health },
   ];
+
+  const sessionMessage = (() => {
+    switch (sessionState) {
+      case "configured":
+        return copy.layout.sessionConfigured;
+      case "saved":
+        return copy.layout.sessionSaved;
+      case "cleared":
+        return copy.layout.sessionCleared;
+      default:
+        return copy.layout.sessionMissing;
+    }
+  })();
 
   const handleSaveApiKey = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const savedApiKey = saveStoredApiKey(apiKeyInput) ?? "";
     setStoredApiKey(savedApiKey);
     setApiKeyInput(savedApiKey);
-    setSessionMessage(
-      savedApiKey
-        ? "API key saved. Protected views can now retry their requests."
-        : "API key cleared. Protected requests will be blocked until a new key is configured.",
-    );
+    setSessionState(savedApiKey ? "saved" : "cleared");
     void queryClient.invalidateQueries();
   };
 
@@ -68,9 +77,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     clearStoredApiKey();
     setStoredApiKey("");
     setApiKeyInput("");
-    setSessionMessage(
-      "API key cleared. Protected requests will be blocked until a new key is configured.",
-    );
+    setSessionState("cleared");
     void queryClient.resetQueries();
   };
 
@@ -81,7 +88,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-6">
               <Link to="/" className="text-xl font-bold">
-                Senclaw
+                {copy.layout.brand}
               </Link>
               <nav className="flex gap-4">
                 {navItems.map((item) => (
@@ -103,44 +110,58 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 ))}
               </nav>
             </div>
-            <button
-              type="button"
-              onClick={() => setDarkMode(!darkMode)}
-              className="rounded-md p-2 hover:bg-accent"
-              aria-label="Toggle dark mode"
-            >
-              {darkMode ? (
-                <svg
-                  className="h-5 w-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <title>Light mode</title>
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
-                  />
-                </svg>
-              ) : (
-                <svg
-                  className="h-5 w-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <title>Dark mode</title>
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
-                  />
-                </svg>
-              )}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={toggleLocale}
+                className="rounded-md px-3 py-2 text-sm font-medium hover:bg-accent"
+                aria-label={copy.layout.localeToggle}
+              >
+                {copy.layout.localeToggle}
+              </button>
+              <button
+                type="button"
+                onClick={() => setDarkMode(!darkMode)}
+                className="rounded-md p-2 hover:bg-accent"
+                aria-label={
+                  darkMode
+                    ? copy.layout.lightModeLabel
+                    : copy.layout.darkModeLabel
+                }
+              >
+                {darkMode ? (
+                  <svg
+                    className="h-5 w-5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <title>{copy.layout.lightModeLabel}</title>
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
+                    />
+                  </svg>
+                ) : (
+                  <svg
+                    className="h-5 w-5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <title>{copy.layout.darkModeLabel}</title>
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
+                    />
+                  </svg>
+                )}
+              </button>
+            </div>
           </div>
 
           <form
@@ -149,7 +170,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           >
             <div className="min-w-0 flex-1">
               <label htmlFor="gateway-api-key" className="font-medium">
-                Gateway API key
+                {copy.layout.apiKeyLabel}
               </label>
               <div className="mt-1 flex flex-col gap-2 md:flex-row">
                 <input
@@ -157,13 +178,13 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                   type="password"
                   value={apiKeyInput}
                   onChange={(event) => setApiKeyInput(event.target.value)}
-                  placeholder="Paste a Senclaw API key"
+                  placeholder={copy.layout.apiKeyPlaceholder}
                   className="h-10 flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
                   autoComplete="off"
                 />
                 <div className="flex gap-2">
                   <Button type="submit" size="sm">
-                    Save key
+                    {copy.layout.saveKey}
                   </Button>
                   <Button
                     type="button"
@@ -172,14 +193,16 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                     onClick={handleClearApiKey}
                     disabled={!storedApiKey}
                   >
-                    Clear
+                    {copy.layout.clearKey}
                   </Button>
                 </div>
               </div>
             </div>
             <div className="max-w-md text-xs text-muted-foreground">
               <div className="font-medium text-foreground">
-                {storedApiKey ? "Configured" : "Missing"}
+                {storedApiKey
+                  ? copy.layout.statusConfigured
+                  : copy.layout.statusMissing}
               </div>
               <p className="mt-1">{sessionMessage}</p>
             </div>

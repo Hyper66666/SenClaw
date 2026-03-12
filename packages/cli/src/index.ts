@@ -6,6 +6,7 @@ import { agentCommand } from "./commands/agent.js";
 import { taskCommand } from "./commands/task.js";
 import { runCommand } from "./commands/run.js";
 import { healthCommand } from "./commands/health.js";
+import { runtimeCommands } from "./commands/runtime.js";
 
 const program = new Command();
 
@@ -20,5 +21,6 @@ agentCommand(program);
 taskCommand(program);
 runCommand(program);
 healthCommand(program);
+runtimeCommands(program);
 
 program.parse();

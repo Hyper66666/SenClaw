@@ -9,7 +9,10 @@ import type { ApiKeyService } from "../auth/api-key-service.js";
 function isPublicRoute(url: string): boolean {
   const path = url.split("?")[0] ?? url;
   return (
-    path === "/health" || path === "/metrics" || path.startsWith("/webhooks/")
+    path === "/health" ||
+    path === "/metrics" ||
+    path === "/api/runtime/settings" ||
+    path.startsWith("/webhooks/")
   );
 }
 

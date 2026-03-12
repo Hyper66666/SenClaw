@@ -1,11 +1,13 @@
 import { Card, ErrorMessage, LoadingSpinner, Textarea } from "@/components/ui";
 import { Button } from "@/components/ui/Button";
+import { useConsoleLocale } from "@/components/LocaleProvider";
 import { useAgents, useSubmitTask } from "@/hooks/useAPI";
 import { describeConsoleError } from "@/lib/auth-session";
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 export function TaskSubmit() {
+  const { copy, locale } = useConsoleLocale();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const {
@@ -42,7 +44,7 @@ export function TaskSubmit() {
   }
 
   if (agentsError) {
-    const errorState = describeConsoleError(agentsError);
+    const errorState = describeConsoleError(agentsError, locale);
     return (
       <ErrorMessage
         title={errorState.title}
@@ -55,22 +57,22 @@ export function TaskSubmit() {
   if (!agents || agents.length === 0) {
     return (
       <ErrorMessage
-        title="No agents available"
-        message="Create an agent first before submitting tasks"
+        title={copy.taskSubmit.noAgentsTitle}
+        message={copy.taskSubmit.noAgentsMessage}
       />
     );
   }
 
   const submitErrorState = submitError
-    ? describeConsoleError(submitError)
+    ? describeConsoleError(submitError, locale)
     : undefined;
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Submit Task</h1>
+        <h1 className="text-3xl font-bold">{copy.taskSubmit.title}</h1>
         <p className="mt-2 text-muted-foreground">
-          Send a task to an agent for processing
+          {copy.taskSubmit.description}
         </p>
       </div>
 
@@ -87,7 +89,7 @@ export function TaskSubmit() {
           <div className="space-y-6">
             <div className="space-y-2">
               <label htmlFor="agent-select" className="text-sm font-medium">
-                Agent
+                {copy.taskSubmit.agent}
               </label>
               <select
                 id="agent-select"
@@ -105,24 +107,24 @@ export function TaskSubmit() {
             </div>
 
             <Textarea
-              label="Input"
+              label={copy.taskSubmit.input}
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Enter your task input..."
+              placeholder={copy.taskSubmit.inputPlaceholder}
               rows={8}
               required
             />
 
             <div className="flex gap-2">
               <Button type="submit" loading={submitTask.isPending}>
-                Submit Task
+                {copy.taskSubmit.submit}
               </Button>
               <Button
                 type="button"
                 variant="ghost"
                 onClick={() => navigate("/runs")}
               >
-                Cancel
+                {copy.taskSubmit.cancel}
               </Button>
             </div>
           </div>

@@ -1,14 +1,16 @@
 import { Badge, Card, ErrorMessage, LoadingSpinner } from "@/components/ui";
 import { Button } from "@/components/ui/Button";
+import { useConsoleLocale } from "@/components/LocaleProvider";
 import { useAgent } from "@/hooks/useAPI";
 import { describeConsoleError } from "@/lib/auth-session";
 import { Link, useParams } from "react-router-dom";
 
 export function AgentDetail() {
+  const { copy, locale } = useConsoleLocale();
   const { id } = useParams<{ id: string }>();
 
   if (!id) {
-    return <ErrorMessage message="Agent not found" />;
+    return <ErrorMessage message={copy.agentDetail.notFound} />;
   }
 
   const { data: agent, isLoading, error, refetch } = useAgent(id);
@@ -18,7 +20,7 @@ export function AgentDetail() {
   }
 
   if (error) {
-    const errorState = describeConsoleError(error);
+    const errorState = describeConsoleError(error, locale);
     return (
       <ErrorMessage
         title={errorState.title}
@@ -29,7 +31,7 @@ export function AgentDetail() {
   }
 
   if (!agent) {
-    return <ErrorMessage message="Agent not found" />;
+    return <ErrorMessage message={copy.agentDetail.notFound} />;
   }
 
   return (
@@ -40,34 +42,34 @@ export function AgentDetail() {
             to="/agents"
             className="text-sm text-muted-foreground hover:text-foreground"
           >
-            &lt; Back to agents
+            &lt; {copy.agentDetail.back}
           </Link>
           <h1 className="mt-2 text-3xl font-bold">{agent.name}</h1>
         </div>
         <Link to={`/tasks/new?agentId=${agent.id}`}>
-          <Button>Submit Task</Button>
+          <Button>{copy.agentDetail.submitTask}</Button>
         </Link>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
-        <Card title="Configuration">
+        <Card title={copy.agentDetail.configuration}>
           <div className="space-y-4">
             <div>
               <h4 className="text-sm font-medium text-muted-foreground">
-                Provider
+                {copy.agentDetail.provider}
               </h4>
               <p className="mt-1">{agent.provider.provider}</p>
             </div>
             <div>
               <h4 className="text-sm font-medium text-muted-foreground">
-                Model
+                {copy.agentDetail.model}
               </h4>
               <p className="mt-1">{agent.provider.model}</p>
             </div>
             {agent.provider.temperature !== undefined && (
               <div>
                 <h4 className="text-sm font-medium text-muted-foreground">
-                  Temperature
+                  {copy.agentDetail.temperature}
                 </h4>
                 <p className="mt-1">{agent.provider.temperature}</p>
               </div>
@@ -75,7 +77,7 @@ export function AgentDetail() {
             {agent.provider.maxTokens !== undefined && (
               <div>
                 <h4 className="text-sm font-medium text-muted-foreground">
-                  Max Tokens
+                  {copy.agentDetail.maxTokens}
                 </h4>
                 <p className="mt-1">{agent.provider.maxTokens}</p>
               </div>
@@ -83,9 +85,11 @@ export function AgentDetail() {
           </div>
         </Card>
 
-        <Card title="Tools">
+        <Card title={copy.agentDetail.tools}>
           {agent.tools.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No tools configured</p>
+            <p className="text-sm text-muted-foreground">
+              {copy.agentDetail.noTools}
+            </p>
           ) : (
             <div className="flex flex-wrap gap-2">
               {agent.tools.map((tool) => (
@@ -96,7 +100,7 @@ export function AgentDetail() {
         </Card>
       </div>
 
-      <Card title="System Prompt">
+      <Card title={copy.agentDetail.systemPrompt}>
         <pre className="whitespace-pre-wrap text-sm">{agent.systemPrompt}</pre>
       </Card>
     </div>

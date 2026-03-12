@@ -4,14 +4,14 @@
 
 Senclaw 是一个 AI Agent 编排平台，具备持久化存储、API Key 鉴权、Web Console、连接器接入、任务调度以及沙箱化工具执行能力。
 
-当前代码库功能已经比较完整，本地仓库门禁也已经恢复为绿色。截至 2026 年 3 月 12 日，最新一次 Windows 本地验证中，`build`、`test`、`test:integration` 和 `verify` 都已通过。RabbitMQ 与 Redis Streams 队列驱动已经在仓库内实现，并带有单元测试覆盖及默认的 gateway 接线，但基于真实 broker 的发布级验证证据仍未补齐。同时，项目也已经记录了真实 OpenAI-compatible provider 的 smoke 结果，因此当前剩余的基础上线工作主要收敛为：在 Node 22 环境复验，以及补齐受保护 Web Console 的验收记录。
+当前代码库功能已经比较完整，仓库门禁也已在本地恢复为绿色。截止 2026 年 3 月 12 日，最新一次 Windows 本地验证中，`build`、`test`、`test:integration` 和 `verify` 均已通过。RabbitMQ 与 Redis Streams 队列驱动已经在仓库内实现，并带有单元测试覆盖和默认 gateway 接线，但基于真实 broker 的发布级验证证据仍待补齐。与此同时，项目也已经记录了真实 OpenAI-compatible provider 的 smoke 结果，因此当前剩余的基础上线工作主要收敛为：在 Node 22 环境复验，以及补齐受保护 Web Console 的验收记录。
 
 ## 就绪度快照
 
 截至 2026 年 3 月 12 日的最新本地证据（Windows，Node `v20.11.0`，因此会出现 engine warning）：
 
 - `pnpm run build`：通过
-- `pnpm run test`：通过（`33` 个测试文件，`217` 个测试）
+- `pnpm run test`：通过（`36` 个测试文件，`225` 个测试）
 - `pnpm run test:integration`：通过（`6` 个测试文件，`20` 个测试）
 - `pnpm run verify`：通过
 
@@ -24,7 +24,7 @@ Senclaw 是一个 AI Agent 编排平台，具备持久化存储、API Key 鉴权
 
 ## 仓库结构
 
-应用：
+Applications：
 
 - `@senclaw/gateway`：Fastify API 与管理入口
 - `@senclaw/agent-runner`：Agent 执行运行时
@@ -94,11 +94,47 @@ corepack pnpm --filter @senclaw/web dev
 - Gateway API 默认运行在 `http://localhost:4100`
 - 独立 scheduler 健康检查默认运行在 `http://localhost:4500/health`
 
+## 一键本地运行
+
+如果你想快速启动一套本地可用的 Senclaw，可直接使用启动脚本：
+
+```bash
+# Windows
+scripts\start-senclaw.cmd
+scripts\stop-senclaw.cmd
+
+# Linux
+./scripts/start-senclaw.sh
+./scripts/stop-senclaw.sh
+```
+
+启动脚本会在 `.tmp/live-run` 下初始化本地运行目录，启动 gateway 和 web console，复用持久化 bootstrap admin key，并在终端打印启动摘要，包含：
+
+- 当前模型 ID
+- admin key
+- Web Console 地址
+- gateway 地址
+- 运行日志目录
+
+Web Console 头部右上角提供 `EN / 中文` 语言切换按钮。所选语言会持久化，并分别作用于：
+
+- 当前浏览器里的 Web Console 文案
+- 下一次启动脚本运行时的终端输出文案（通过 `.tmp/live-run/runtime-settings.json`）
+
+如果你已经在仓库根目录的 Windows `cmd` 里，也可以直接使用更短的命令：
+
+```bat
+senclaw start
+senclaw stop
+```
+
+这个包装器会转发到 `packages/cli` 里的本地 CLI，行为和启动脚本一致。
+
 ## 鉴权
 
-默认情况下，Gateway 下 `/api/v1/*` 路由都需要 Bearer API Key。
+默认情况下，Gateway 中 `/api/v1/*` 路由都需要 Bearer API Key。
 
-创建或引导一个 key：
+创建或引导一把 key：
 
 ```bash
 corepack pnpm run auth:bootstrap-admin
@@ -108,7 +144,7 @@ Web Console 当前支持轻量级 API Key session。使用 agents、runs 或 tas
 
 ## 真实 Provider Smoke 测试
 
-Senclaw 提供了一个不把密钥写入仓库的 OpenAI-compatible provider smoke 路径。在本地设置以下环境变量：
+Senclaw 提供了一条不把密钥写入仓库的 OpenAI-compatible provider smoke 路径。先在本地设置以下环境变量：
 
 ```bash
 SENCLAW_OPENAI_API_KEY=<你的 key>
@@ -150,7 +186,7 @@ corepack pnpm run verify
 
 项目从“本地全绿”到“可以正式宣称部署就绪”之间，还剩这些事项：
 
-- 在受支持的 Node 22 环境中重新跑一遍 readiness matrix
+- 在受支持的 Node 22 环境中重跑一遍 readiness matrix
 - 记录一次开启鉴权后的 Web Console 验收
 - 如果要对外宣称 broker-backed queue 已具备发布级支持，则需要补齐 RabbitMQ 和 Redis 的真实 broker 验证
 - 如果要对外宣称 level 4 native enforcement，则需要补齐 Windows 和 Linux 上基于证据的 Rust 沙箱验证

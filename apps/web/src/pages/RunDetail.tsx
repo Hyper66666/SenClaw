@@ -1,14 +1,16 @@
 import { Badge, Card, ErrorMessage, LoadingSpinner } from "@/components/ui";
+import { useConsoleLocale } from "@/components/LocaleProvider";
 import { useRun, useRunMessages } from "@/hooks/useAPI";
 import { describeConsoleError } from "@/lib/auth-session";
 import { formatDate } from "@/lib/utils";
 import { Link, useParams } from "react-router-dom";
 
 export function RunDetail() {
+  const { copy, locale } = useConsoleLocale();
   const { id } = useParams<{ id: string }>();
 
   if (!id) {
-    return <ErrorMessage message="Run not found" />;
+    return <ErrorMessage message={copy.runDetail.notFound} />;
   }
 
   const {
@@ -29,7 +31,7 @@ export function RunDetail() {
   }
 
   if (runError || messagesError) {
-    const errorState = describeConsoleError(runError ?? messagesError);
+    const errorState = describeConsoleError(runError ?? messagesError, locale);
     return (
       <ErrorMessage
         title={errorState.title}
@@ -43,7 +45,7 @@ export function RunDetail() {
   }
 
   if (!run) {
-    return <ErrorMessage message="Run not found" />;
+    return <ErrorMessage message={copy.runDetail.notFound} />;
   }
 
   const getStatusVariant = (
@@ -86,26 +88,26 @@ export function RunDetail() {
           to="/runs"
           className="text-sm text-muted-foreground hover:text-foreground"
         >
-          &lt; Back to runs
+          &lt; {copy.runDetail.back}
         </Link>
         <div className="mt-2 flex items-center gap-3">
-          <h1 className="text-3xl font-bold">Run Details</h1>
+          <h1 className="text-3xl font-bold">{copy.runDetail.title}</h1>
           <Badge variant={getStatusVariant(run.status)}>{run.status}</Badge>
         </div>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
-        <Card title="Information">
+        <Card title={copy.runDetail.information}>
           <div className="space-y-4">
             <div>
               <h4 className="text-sm font-medium text-muted-foreground">
-                Run ID
+                {copy.runDetail.runId}
               </h4>
               <p className="mt-1 font-mono text-sm">{run.id}</p>
             </div>
             <div>
               <h4 className="text-sm font-medium text-muted-foreground">
-                Agent ID
+                {copy.runDetail.agentId}
               </h4>
               <Link
                 to={`/agents/${run.agentId}`}
@@ -116,33 +118,35 @@ export function RunDetail() {
             </div>
             <div>
               <h4 className="text-sm font-medium text-muted-foreground">
-                Created
+                {copy.runDetail.created}
               </h4>
               <p className="mt-1 text-sm">{formatDate(run.createdAt)}</p>
             </div>
             <div>
               <h4 className="text-sm font-medium text-muted-foreground">
-                Updated
+                {copy.runDetail.updated}
               </h4>
               <p className="mt-1 text-sm">{formatDate(run.updatedAt)}</p>
             </div>
           </div>
         </Card>
 
-        <Card title="Input">
+        <Card title={copy.runDetail.input}>
           <p className="whitespace-pre-wrap text-sm">{run.input}</p>
         </Card>
       </div>
 
       {run.error && (
-        <Card title="Error">
+        <Card title={copy.runDetail.error}>
           <p className="text-sm text-destructive">{run.error}</p>
         </Card>
       )}
 
-      <Card title="Messages">
+      <Card title={copy.runDetail.messages}>
         {keyedMessages.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No messages yet</p>
+          <p className="text-sm text-muted-foreground">
+            {copy.runDetail.noMessages}
+          </p>
         ) : (
           <div className="space-y-4">
             {keyedMessages.map(({ key, message }) => (

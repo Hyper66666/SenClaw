@@ -49,6 +49,15 @@ describe("describeConsoleError", () => {
     });
   });
 
+  it("returns a Chinese prompt for missing API keys", () => {
+    expect(
+      describeConsoleError(new MissingApiKeyError(), "zh-CN"),
+    ).toMatchObject({
+      title: "\u9700\u8981 API \u5bc6\u94a5",
+      message: expect.stringContaining("Gateway API \u5bc6\u94a5"),
+    });
+  });
+
   it("returns an actionable 401 message", () => {
     expect(
       describeConsoleError(
@@ -70,6 +79,19 @@ describe("describeConsoleError", () => {
       title: "Not enough permissions",
       message:
         "The configured API key does not have permission for this action. Use a key with the required role and retry.",
+    });
+  });
+
+  it("returns a Chinese 403 message", () => {
+    expect(
+      describeConsoleError(
+        new ApiResponseError(403, "FORBIDDEN", "not enough privileges"),
+        "zh-CN",
+      ),
+    ).toEqual({
+      title: "\u6743\u9650\u4e0d\u8db3",
+      message:
+        "\u5f53\u524d API \u5bc6\u94a5\u6ca1\u6709\u6267\u884c\u8be5\u64cd\u4f5c\u7684\u6743\u9650\uff0c\u8bf7\u6362\u7528\u66f4\u9ad8\u6743\u9650\u7684\u5bc6\u94a5\u3002",
     });
   });
 });

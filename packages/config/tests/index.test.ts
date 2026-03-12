@@ -3,6 +3,7 @@ import { loadConfig, loadProviderSmokeConfig } from "../src/index.js";
 
 describe("loadConfig", () => {
   const originalEnv = { ...process.env };
+  const isolatedWorkspaceRoot = "__senclaw_config_test_no_env__";
 
   beforeEach(() => {
     for (const key of Object.keys(process.env)) {
@@ -17,7 +18,7 @@ describe("loadConfig", () => {
   });
 
   it("returns defaults when no env vars are set", () => {
-    const config = loadConfig();
+    const config = loadConfig(isolatedWorkspaceRoot);
     expect(config.logLevel).toBe("info");
     expect(config.gatewayPort).toBe(4100);
     expect(config.agentRunnerPort).toBe(4200);
@@ -54,7 +55,7 @@ describe("loadConfig", () => {
     process.env.SENCLAW_LOG_DEBUG_ENDPOINTS = "/health,/metrics";
     process.env.SENCLAW_LOG_DEBUG_USERS = "system,user-1";
 
-    const config = loadConfig();
+    const config = loadConfig(isolatedWorkspaceRoot);
     expect(config.logLevel).toBe("debug");
     expect(config.gatewayPort).toBe(9000);
     expect(config.maxTurns).toBe(5);
@@ -74,28 +75,34 @@ describe("loadConfig", () => {
   it("treats an empty db url as undefined", () => {
     process.env.SENCLAW_DB_URL = "";
 
-    const config = loadConfig();
+    const config = loadConfig(isolatedWorkspaceRoot);
     expect(config.dbUrl).toBeUndefined();
   });
 
   it("throws descriptive error for invalid values", () => {
     process.env.SENCLAW_LOG_LEVEL = "invalid-level";
 
-    expect(() => loadConfig()).toThrow("Invalid configuration");
-    expect(() => loadConfig()).toThrow("SENCLAW_LOG_LEVEL");
+    expect(() => loadConfig(isolatedWorkspaceRoot)).toThrow(
+      "Invalid configuration",
+    );
+    expect(() => loadConfig(isolatedWorkspaceRoot)).toThrow(
+      "SENCLAW_LOG_LEVEL",
+    );
   });
 
   it("treats an empty tracing endpoint as undefined", () => {
     process.env.SENCLAW_TRACING_ENDPOINT = "";
 
-    const config = loadConfig();
+    const config = loadConfig(isolatedWorkspaceRoot);
     expect(config.tracingEndpoint).toBeUndefined();
   });
 
   it("rejects invalid log sampling rates", () => {
     process.env.SENCLAW_LOG_SAMPLING_RATE = "2";
 
-    expect(() => loadConfig()).toThrow("SENCLAW_LOG_SAMPLING_RATE");
+    expect(() => loadConfig(isolatedWorkspaceRoot)).toThrow(
+      "SENCLAW_LOG_SAMPLING_RATE",
+    );
   });
 });
 

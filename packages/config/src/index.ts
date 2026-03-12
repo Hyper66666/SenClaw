@@ -193,3 +193,21 @@ export function loadConfig(workspaceRoot?: string): SenclawConfig {
 
   return result.data;
 }
+
+export {
+  ConsoleLocaleSchema,
+  DEFAULT_CONSOLE_LOCALE,
+  RuntimeSettingsSchema,
+  createStartupBanner,
+  ensureRuntimeDirectory,
+  normalizeConsoleLocale,
+  readRuntimeSettings,
+  resolveLocalRuntimeFiles,
+  writeRuntimeSettings,
+} from "./local-runtime.js";
+export type {
+  ConsoleLocale,
+  LocalRuntimeFiles,
+  RuntimeSettings,
+  StartupBannerInput,
+} from "./local-runtime.js";

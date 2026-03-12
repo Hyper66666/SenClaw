@@ -4,7 +4,7 @@ import {
   InMemoryMessageRepository,
   InMemoryRunRepository,
 } from "@senclaw/agent-runner";
-import { loadConfig } from "@senclaw/config";
+import { loadConfig, resolveLocalRuntimeFiles } from "@senclaw/config";
 import {
   createChildLogger,
   createLogger,
@@ -45,12 +45,14 @@ import { healthRoutes } from "./routes/health.js";
 import { jobRoutes } from "./routes/jobs.js";
 import { keyRoutes } from "./routes/keys.js";
 import { runRoutes } from "./routes/runs.js";
+import { runtimeSettingsRoutes } from "./routes/runtime-settings.js";
 import { taskRoutes } from "./routes/tasks.js";
 import { webhookRoutes } from "./routes/webhooks.js";
 import {
   InMemoryExecutionRepository,
   InMemoryJobRepository,
 } from "./scheduler-repositories.js";
+import { createRuntimeSettingsStore } from "./runtime-settings.js";
 
 function resolveMetricPath(request: import("fastify").FastifyRequest): string {
   const routePath =
@@ -100,6 +102,7 @@ export interface CreateServerOptions {
   loggerDestination?: DestinationStream;
   queueDriver?: QueueDriverLike;
   pollingFetcher?: PollingFetcherLike;
+  runtimeSettingsPath?: string;
 }
 
 const HIGH_VOLUME_PATHS = new Set(["/health", "/metrics"]);
@@ -223,6 +226,10 @@ export async function createServer(options: CreateServerOptions = {}): Promise<{
   const app = Fastify({
     logger: false,
   });
+  const runtimeSettingsStore = createRuntimeSettingsStore(
+    options.runtimeSettingsPath ??
+      resolveLocalRuntimeFiles(process.cwd()).settingsFile,
+  );
 
   const requestSpans = new WeakMap<
     import("fastify").FastifyRequest,
@@ -578,6 +585,11 @@ export async function createServer(options: CreateServerOptions = {}): Promise<{
     prefix: "/webhooks",
     connectorRepo,
     webhookConnector,
+  });
+
+  await app.register(runtimeSettingsRoutes, {
+    prefix: "/api/runtime/settings",
+    store: runtimeSettingsStore,
   });
 
   await app.register(keyRoutes, {

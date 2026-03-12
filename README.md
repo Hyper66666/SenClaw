@@ -11,7 +11,7 @@ The codebase is feature-rich and the repository gate is now green locally. As of
 Latest local evidence on March 12, 2026 (Windows, Node `v20.11.0` with engine warning):
 
 - `pnpm run build`: pass
-- `pnpm run test`: pass (`33` test files, `217` tests)
+- `pnpm run test`: pass (`36` test files, `225` tests)
 - `pnpm run test:integration`: pass (`6` test files, `20` tests)
 - `pnpm run verify`: pass
 
@@ -93,6 +93,42 @@ Notes:
 - The web console dev server runs on `http://localhost:3000` by default.
 - The gateway API runs on `http://localhost:4100` by default.
 - The standalone scheduler health endpoint runs on `http://localhost:4500/health` by default.
+
+## One-Click Local Runtime
+
+For a local all-in-one SenClaw session, use the launcher scripts:
+
+```bash
+# Windows
+scripts\\start-senclaw.cmd
+scripts\\stop-senclaw.cmd
+
+# Linux
+./scripts/start-senclaw.sh
+./scripts/stop-senclaw.sh
+```
+
+The launcher bootstraps the local runtime under `.tmp/live-run`, starts the gateway and web console, reuses a persistent bootstrap admin key, and prints a startup banner with:
+
+- current model ID
+- admin key
+- web console URL
+- gateway URL
+- runtime log directory
+
+The web console header includes an `EN / 中文` locale toggle. The selected language is persisted and applied in two places:
+
+- immediately for web console copy via browser storage
+- on the next launcher start via `.tmp/live-run/runtime-settings.json`
+
+If you are already in the repository root on Windows `cmd`, you can use the shorter wrapper command directly:
+
+```bat
+senclaw start
+senclaw stop
+```
+
+This wrapper forwards to the local CLI in `packages/cli` and behaves like the launcher scripts.
 
 ## Authentication
 

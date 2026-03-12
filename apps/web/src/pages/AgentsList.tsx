@@ -5,19 +5,21 @@ import {
   LoadingSpinner,
 } from "@/components/ui";
 import { Button } from "@/components/ui/Button";
+import { useConsoleLocale } from "@/components/LocaleProvider";
 import { useAgents, useDeleteAgent } from "@/hooks/useAPI";
 import { describeConsoleError } from "@/lib/auth-session";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 
 export function AgentsList() {
+  const { copy, locale } = useConsoleLocale();
   const { data: agents, isLoading, error, refetch } = useAgents();
   const deleteAgent = useDeleteAgent();
   const [deleteError, setDeleteError] = useState<unknown>();
 
   if (isLoading) return <LoadingSpinner />;
   if (error) {
-    const errorState = describeConsoleError(error);
+    const errorState = describeConsoleError(error, locale);
     return (
       <ErrorMessage
         title={errorState.title}
@@ -28,15 +30,15 @@ export function AgentsList() {
   }
 
   const deleteErrorState = deleteError
-    ? describeConsoleError(deleteError)
+    ? describeConsoleError(deleteError, locale)
     : undefined;
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Agents</h1>
+        <h1 className="text-3xl font-bold">{copy.agents.title}</h1>
         <Link to="/agents/new">
-          <Button>Create Agent</Button>
+          <Button>{copy.agents.create}</Button>
         </Link>
       </div>
 
@@ -50,11 +52,11 @@ export function AgentsList() {
 
       {agents && agents.length === 0 ? (
         <EmptyState
-          title="No agents yet"
-          description="Create your first agent to get started"
+          title={copy.agents.emptyTitle}
+          description={copy.agents.emptyDescription}
           action={
             <Link to="/agents/new">
-              <Button>Create Agent</Button>
+              <Button>{copy.agents.create}</Button>
             </Link>
           }
         />
@@ -87,17 +89,13 @@ export function AgentsList() {
                 <div className="flex gap-2">
                   <Link to={`/agents/${agent.id}`} className="flex-1">
                     <Button variant="secondary" className="w-full">
-                      View
+                      {copy.agents.view}
                     </Button>
                   </Link>
                   <Button
                     variant="danger"
                     onClick={async () => {
-                      if (
-                        !confirm(
-                          `Are you sure you want to delete "${agent.name}"?`,
-                        )
-                      ) {
+                      if (!confirm(copy.agents.deleteConfirm(agent.name))) {
                         return;
                       }
 
@@ -110,7 +108,7 @@ export function AgentsList() {
                     }}
                     loading={deleteAgent.isPending}
                   >
-                    Delete
+                    {copy.agents.delete}
                   </Button>
                 </div>
               </div>

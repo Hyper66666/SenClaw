@@ -1,4 +1,5 @@
 import { Card, ErrorMessage, Input, Textarea } from "@/components/ui";
+import { useConsoleLocale } from "@/components/LocaleProvider";
 import { Button } from "@/components/ui/Button";
 import { useCreateAgent } from "@/hooks/useAPI";
 import type { CreateAgent } from "@/lib/api";
@@ -7,6 +8,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 export function AgentCreate() {
+  const { copy, locale } = useConsoleLocale();
   const navigate = useNavigate();
   const createAgent = useCreateAgent();
   const [submitError, setSubmitError] = useState<unknown>();
@@ -33,15 +35,15 @@ export function AgentCreate() {
   };
 
   const submitErrorState = submitError
-    ? describeConsoleError(submitError)
+    ? describeConsoleError(submitError, locale)
     : undefined;
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Create Agent</h1>
+        <h1 className="text-3xl font-bold">{copy.agentCreate.title}</h1>
         <p className="mt-2 text-muted-foreground">
-          Configure a new AI agent with custom behavior
+          {copy.agentCreate.description}
         </p>
       </div>
 
@@ -57,7 +59,7 @@ export function AgentCreate() {
         <Card>
           <div className="space-y-6">
             <Input
-              label="Name"
+              label={copy.agentCreate.name}
               value={formData.name}
               onChange={(e) =>
                 setFormData({ ...formData, name: e.target.value })
@@ -67,7 +69,7 @@ export function AgentCreate() {
             />
 
             <Textarea
-              label="System Prompt"
+              label={copy.agentCreate.systemPrompt}
               value={formData.systemPrompt}
               onChange={(e) =>
                 setFormData({ ...formData, systemPrompt: e.target.value })
@@ -79,7 +81,7 @@ export function AgentCreate() {
 
             <div className="grid gap-4 md:grid-cols-2">
               <Input
-                label="Provider"
+                label={copy.agentCreate.provider}
                 value={formData.provider.provider}
                 onChange={(e) =>
                   setFormData({
@@ -95,7 +97,7 @@ export function AgentCreate() {
               />
 
               <Input
-                label="Model"
+                label={copy.agentCreate.model}
                 value={formData.provider.model}
                 onChange={(e) =>
                   setFormData({
@@ -110,7 +112,7 @@ export function AgentCreate() {
 
             <div className="grid gap-4 md:grid-cols-2">
               <Input
-                label="Temperature"
+                label={copy.agentCreate.temperature}
                 type="number"
                 step="0.1"
                 min="0"
@@ -128,7 +130,7 @@ export function AgentCreate() {
               />
 
               <Input
-                label="Max Tokens (optional)"
+                label={copy.agentCreate.maxTokens}
                 type="number"
                 value={formData.provider.maxTokens || ""}
                 onChange={(e) =>
@@ -147,7 +149,7 @@ export function AgentCreate() {
             </div>
 
             <Input
-              label="Tools (comma-separated)"
+              label={copy.agentCreate.tools}
               value={formData.tools?.join(", ") || ""}
               onChange={(e) =>
                 setFormData({
@@ -158,19 +160,19 @@ export function AgentCreate() {
                     .filter(Boolean),
                 })
               }
-              placeholder="echo, calculator"
+              placeholder={copy.agentCreate.toolsPlaceholder}
             />
 
             <div className="flex gap-2">
               <Button type="submit" loading={createAgent.isPending}>
-                Create Agent
+                {copy.agentCreate.create}
               </Button>
               <Button
                 type="button"
                 variant="ghost"
                 onClick={() => navigate("/agents")}
               >
-                Cancel
+                {copy.agentCreate.cancel}
               </Button>
             </div>
           </div>
