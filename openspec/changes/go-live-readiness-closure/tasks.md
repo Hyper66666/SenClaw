@@ -31,7 +31,7 @@ Note: on March 14, 2026, authenticated operator flows were re-verified through t
 - [ ] 4.5 Add unit and live-broker integration coverage for startup, recovery, and message-processing behavior.
 - [x] 4.6 Wire the supported queue drivers into runtime configuration and update queue support docs with the exact supported broker modes.
 
-Note: broker-backed drivers now exist locally with unit coverage and default gateway wiring. Live RabbitMQ and Redis validation remains open before release-ready claims can be made.
+Note: broker-backed drivers now exist locally with unit coverage, default gateway wiring, and an opt-in live-broker suite at `tests/integration/queue-brokers-live.test.ts`. Configure `SENCLAW_TEST_RABBITMQ_URL` and/or `SENCLAW_TEST_REDIS_URL` to execute the real-broker checks. Recorded RabbitMQ and Redis evidence still remains open before release-ready claims can be made.
 
 ## 5. Conditional Native Sandbox Release Verification
 

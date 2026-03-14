@@ -10,7 +10,7 @@ Baseline evidence already recorded:
 
 - `pnpm run build`: pass
 - `pnpm run test`: pass (`46` test files, `267` tests)
-- `pnpm run test:integration`: pass (`6` test files, `20` tests)
+- `pnpm run test:integration`: pass (`6` test files, `20` tests) plus an opt-in live-broker suite (`1` file, `4` skipped without broker env)
 - `pnpm run verify`: pass
 - real OpenAI-compatible smoke validation: pass on March 12, 2026 against the Volcengine Ark OpenAI-compatible endpoint using model `doubao-seed-2.0-pro`; the smoke prompt returned `OK`
 
@@ -208,6 +208,8 @@ Evidence:
 - queue lifecycle integration exists through `BrokerQueueDriver` plus concrete RabbitMQ and Redis drivers
 - queue config validation covers provider-specific RabbitMQ and Redis schemas
 - unit tests cover driver dispatch, recovery, ack, nack, requeue, and dead-letter behavior
+- opt-in live-broker integration coverage now exists in `tests/integration/queue-brokers-live.test.ts` for RabbitMQ and Redis startup plus message-processing and dead-letter verification
+- the live-broker suite skips cleanly when `SENCLAW_TEST_RABBITMQ_URL` and `SENCLAW_TEST_REDIS_URL` are not configured
 
 Remaining blockers:
 

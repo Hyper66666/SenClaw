@@ -113,7 +113,10 @@ Current queue-driver behavior:
 Current validation boundary:
 
 - unit tests cover schema validation, driver dispatch, recovery, and ack/nack behavior
-- live RabbitMQ and Redis broker validation is still required before release-ready broker claims
+- opt-in live broker integration tests now exist in `tests/integration/queue-brokers-live.test.ts`
+- configure `SENCLAW_TEST_RABBITMQ_URL` and/or `SENCLAW_TEST_REDIS_URL`, then run `corepack pnpm exec vitest run --config vitest.integration.config.ts tests/integration/queue-brokers-live.test.ts`
+- when those env vars are absent, the live-broker suite skips cleanly without failing the normal integration matrix
+- release-ready RabbitMQ and Redis claims still require recorded evidence from a real broker run
 
 ### Polling
 
