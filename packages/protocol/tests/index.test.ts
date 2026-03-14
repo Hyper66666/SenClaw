@@ -291,3 +291,21 @@ describe("repository interfaces", () => {
     expectTypeOf<HasExecutionCreate>().toBeFunction();
   });
 });
+
+describe("ToolResultSchema approval flow", () => {
+  it("parses an approval-required tool result", () => {
+    const result = ToolResultSchema.safeParse({
+      toolCallId: "tc-approval",
+      success: false,
+      error: "Approval required to access this path.",
+      approvalRequired: true,
+      approvalRequestId: "approval-1",
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.approvalRequired).toBe(true);
+      expect(result.data.approvalRequestId).toBe("approval-1");
+    }
+  });
+});

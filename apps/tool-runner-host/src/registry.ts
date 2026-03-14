@@ -1,4 +1,4 @@
-﻿import { performance } from "node:perf_hooks";
+import { performance } from "node:perf_hooks";
 import { createChildLogger, createLogger } from "@senclaw/logging";
 import {
   getMetricsRegistry,
@@ -10,9 +10,17 @@ import type { ToolDefinition, ToolResult } from "@senclaw/protocol";
 import type { z } from "zod/v4";
 import { SandboxedToolRunner } from "./sandbox.js";
 
+export interface PendingApprovalToolExecution {
+  type: "approval_required";
+  approvalRequestId: string;
+  message: string;
+}
+
+export type ToolExecutionOutput = string | PendingApprovalToolExecution;
+
 export interface ToolHandler<T = unknown> {
   definition: ToolDefinition;
-  execute: (args: T) => Promise<string> | string;
+  execute: (args: T) => Promise<ToolExecutionOutput> | ToolExecutionOutput;
 }
 
 const logger = createLogger(
@@ -26,6 +34,12 @@ const logger = createLogger(
     | "fatal"
     | undefined) ?? "info",
 );
+
+function isPendingApprovalResult(
+  value: ToolExecutionOutput,
+): value is PendingApprovalToolExecution {
+  return typeof value !== "string" && value.type === "approval_required";
+}
 
 export class ToolRegistry {
   private tools = new Map<string, ToolHandler>();
@@ -42,14 +56,18 @@ export class ToolRegistry {
 
   register<T extends z.ZodType>(
     definition: ToolDefinition<T>,
-    handler: (args: z.infer<T>) => Promise<string> | string,
+    handler: (
+      args: z.infer<T>,
+    ) => Promise<ToolExecutionOutput> | ToolExecutionOutput,
   ): void {
     if (this.tools.has(definition.name)) {
       throw new Error(`Tool "${definition.name}" is already registered`);
     }
     this.tools.set(definition.name, {
       definition,
-      execute: handler as (args: unknown) => Promise<string> | string,
+      execute: handler as (
+        args: unknown,
+      ) => Promise<ToolExecutionOutput> | ToolExecutionOutput,
     });
   }
 
@@ -64,9 +82,12 @@ export class ToolRegistry {
   private async invokeHandler(
     handler: ToolHandler,
     args: unknown,
-  ): Promise<string> {
+  ): Promise<ToolExecutionOutput> {
     if ((handler.definition.sandbox?.level ?? 0) >= 1) {
-      return this.sandboxRunner.execute(handler, args);
+      return this.sandboxRunner.execute(
+        handler,
+        args,
+      ) as Promise<ToolExecutionOutput>;
     }
 
     return Promise.race([
@@ -143,6 +164,23 @@ export class ToolRegistry {
             "Tool execution started",
           );
           const result = await this.invokeHandler(handler, parseResult.data);
+
+          if (isPendingApprovalResult(result)) {
+            recordMetric("failed");
+            setSpanError(span, result.message);
+            toolLogger.warn(
+              { approvalRequestId: result.approvalRequestId },
+              "Tool execution is waiting for approval",
+            );
+            return {
+              toolCallId,
+              success: false,
+              error: result.message,
+              approvalRequired: true,
+              approvalRequestId: result.approvalRequestId,
+            };
+          }
+
           recordMetric("success");
           setSpanOk(span);
           toolLogger.info(

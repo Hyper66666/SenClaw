@@ -1,4 +1,4 @@
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -57,11 +57,9 @@ describe("runtime workspace helpers", () => {
     const spec = createRuntimeCommandSpec("start", root);
 
     expect(spec.workspaceRoot).toBe(root);
+    expect(spec.command).toBe(process.execPath);
     expect(spec.args).toEqual([
-      "pnpm",
-      "exec",
-      "tsx",
-      "scripts/local-runtime.ts",
+      resolve(root, "scripts", "local-runtime.js"),
       "start",
     ]);
   });

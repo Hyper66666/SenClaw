@@ -5,7 +5,7 @@ import {
 import { ToolRegistry, registerBuiltinTools } from "@senclaw/tool-runner-host";
 import { beforeEach, describe, expect, it } from "vitest";
 import { AgentService } from "../src/agent-service.js";
-import { executeRun } from "../src/execution-loop.js";
+import { executeRun, formatToolResultForModel } from "../src/execution-loop.js";
 import {
   InMemoryAgentRepository,
   InMemoryMessageRepository,
@@ -237,5 +237,18 @@ describe("executeRun metrics", () => {
     );
     expect(output).toContain("agent_execution_duration_seconds_bucket");
     expect(output).toContain('agent_id="agent-metrics"');
+  });
+});
+describe("formatToolResultForModel", () => {
+  it("includes approval request details for approval-required tool results", () => {
+    expect(
+      formatToolResultForModel({
+        toolCallId: "tc-approval",
+        success: false,
+        error: "Approval required to access this path.",
+        approvalRequired: true,
+        approvalRequestId: "approval-1",
+      }),
+    ).toContain("approval-1");
   });
 });

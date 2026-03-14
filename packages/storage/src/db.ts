@@ -10,7 +10,12 @@ import { schema } from "./schema.js";
 interface SqliteClientLike {
   close(): void;
   pragma(source: string, options?: { simple?: boolean }): unknown;
-  prepare<Result = unknown>(source: string): { get(): Result | undefined };
+  prepare<Result = unknown>(
+    source: string,
+  ): {
+    get(...params: unknown[]): Result | undefined;
+    run(...params: unknown[]): unknown;
+  };
 }
 
 export type StorageDatabase = BetterSQLite3Database<typeof schema> & {

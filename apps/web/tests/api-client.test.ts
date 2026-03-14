@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+﻿import { describe, expect, it, vi } from "vitest";
 import { MissingApiKeyError, createApiClient } from "../src/index";
 
 describe("createApiClient", () => {
@@ -85,6 +85,28 @@ describe("createApiClient", () => {
     await expect(client.request("/api/v1/agents")).rejects.toBeInstanceOf(
       MissingApiKeyError,
     );
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it("treats runtime approvals endpoints as protected", async () => {
+    const fetchImpl = vi.fn(
+      async () =>
+        new Response(JSON.stringify([]), {
+          status: 200,
+          headers: {
+            "content-type": "application/json",
+          },
+        }),
+    );
+    const client = createApiClient({
+      baseUrl: "http://localhost:4100",
+      getApiKey: () => undefined,
+      fetchImpl,
+    });
+
+    await expect(
+      client.request("/api/runtime/approvals"),
+    ).rejects.toBeInstanceOf(MissingApiKeyError);
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 });

@@ -1,5 +1,6 @@
-import {
+﻿import {
   clearStoredApiKey,
+  importApiKeyFromHash,
   loadStoredApiKey,
   saveStoredApiKey,
 } from "@/lib/auth-session";
@@ -7,6 +8,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useConsoleLocale } from "./LocaleProvider";
+import { ApprovalInbox } from "./ApprovalInbox";
 import { Button } from "./ui/Button";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
@@ -30,6 +32,27 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const [sessionState, setSessionState] = useState<
     "configured" | "missing" | "saved" | "cleared"
   >(() => (loadStoredApiKey() ? "configured" : "missing"));
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const importedApiKey = importApiKeyFromHash(window.location.hash);
+    if (!importedApiKey) {
+      return;
+    }
+
+    setStoredApiKey(importedApiKey);
+    setApiKeyInput(importedApiKey);
+    setSessionState("saved");
+    window.history.replaceState(
+      null,
+      "",
+      `${window.location.pathname}${window.location.search}`,
+    );
+    void queryClient.invalidateQueries();
+  }, [queryClient]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -111,6 +134,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               </nav>
             </div>
             <div className="flex items-center gap-2">
+              <ApprovalInbox hasApiKey={Boolean(storedApiKey)} />
               <button
                 type="button"
                 onClick={toggleLocale}

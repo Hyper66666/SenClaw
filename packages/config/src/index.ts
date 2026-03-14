@@ -1,4 +1,5 @@
-import { existsSync } from "node:fs";
+﻿import { existsSync, readFileSync } from "node:fs";
+import { homedir } from "node:os";
 import { resolve } from "node:path";
 import { config as loadDotenv } from "dotenv";
 import { z } from "zod/v4";
@@ -66,6 +67,52 @@ function createBooleanEnvSchema(defaultValue: boolean) {
     return value;
   }, z.boolean());
 }
+
+export const GlobalFilesystemPermissionsConfigSchema = z.object({
+  allowAllWrites: z.boolean().default(false),
+  writeAllowedPaths: z.array(z.string()).default([]),
+  promptForElevation: z.boolean().default(true),
+});
+
+export type GlobalFilesystemPermissionsConfig = z.infer<
+  typeof GlobalFilesystemPermissionsConfigSchema
+>;
+
+export const GlobalShellPermissionsConfigSchema = z.object({
+  enabled: z.boolean().default(true),
+  enforcementMode: z.enum(["managed"]).default("managed"),
+  promptForElevation: z.boolean().default(true),
+});
+
+export type GlobalShellPermissionsConfig = z.infer<
+  typeof GlobalShellPermissionsConfigSchema
+>;
+
+export const GlobalPermissionsConfigSchema = z.object({
+  filesystem: GlobalFilesystemPermissionsConfigSchema.default({
+    allowAllWrites: false,
+    writeAllowedPaths: [],
+    promptForElevation: true,
+  }),
+  shell: GlobalShellPermissionsConfigSchema.default({
+    enabled: true,
+    enforcementMode: "managed",
+    promptForElevation: true,
+  }),
+});
+
+export type GlobalPermissionsConfig = z.infer<
+  typeof GlobalPermissionsConfigSchema
+>;
+
+export const DEFAULT_GLOBAL_PERMISSIONS: GlobalPermissionsConfig =
+  GlobalPermissionsConfigSchema.parse({});
+
+const GLOBAL_CONFIG_FILE = resolve(homedir(), ".senclawrc");
+
+const GlobalCliConfigSchema = z.object({
+  permissions: GlobalPermissionsConfigSchema.optional(),
+});
 
 const SenclawConfigSchema = z.object({
   logLevel: z
@@ -194,11 +241,36 @@ export function loadConfig(workspaceRoot?: string): SenclawConfig {
   return result.data;
 }
 
+export function loadGlobalPermissionsConfig(
+  configFile = GLOBAL_CONFIG_FILE,
+): GlobalPermissionsConfig {
+  try {
+    if (!existsSync(configFile)) {
+      return DEFAULT_GLOBAL_PERMISSIONS;
+    }
+
+    const raw = JSON.parse(readFileSync(configFile, "utf8")) as unknown;
+    const parsed = GlobalCliConfigSchema.safeParse(raw);
+    if (!parsed.success) {
+      return DEFAULT_GLOBAL_PERMISSIONS;
+    }
+
+    return parsed.data.permissions ?? DEFAULT_GLOBAL_PERMISSIONS;
+  } catch {
+    return DEFAULT_GLOBAL_PERMISSIONS;
+  }
+}
+
 export {
   ConsoleLocaleSchema,
   DEFAULT_CONSOLE_LOCALE,
+  DEFAULT_LOCAL_RUNTIME_SYSTEM_PROMPT,
+  LOCAL_RUNTIME_AGENT_NAME,
+  LOCAL_RUNTIME_AGENT_TOOLS,
   RuntimeSettingsSchema,
+  createDefaultLocalRuntimeAgent,
   createStartupBanner,
+  createWebRuntimeProcessSpec,
   ensureRuntimeDirectory,
   normalizeConsoleLocale,
   readRuntimeSettings,
@@ -208,6 +280,15 @@ export {
 export type {
   ConsoleLocale,
   LocalRuntimeFiles,
+  PendingApprovalSummary,
+  RuntimeProcessSpec,
   RuntimeSettings,
   StartupBannerInput,
 } from "./local-runtime.js";
+export { evaluateLocalPermission } from "./permissions.js";
+export type {
+  EvaluateLocalPermissionInput,
+  LocalPermissionAction,
+  LocalPermissionDecision,
+  LocalPermissionOutcome,
+} from "./permissions.js";

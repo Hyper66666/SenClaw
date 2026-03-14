@@ -1,10 +1,14 @@
-import {
+﻿import {
   AgentService,
   InMemoryAgentRepository,
   InMemoryMessageRepository,
   InMemoryRunRepository,
 } from "@senclaw/agent-runner";
-import { loadConfig, resolveLocalRuntimeFiles } from "@senclaw/config";
+import {
+  loadConfig,
+  loadGlobalPermissionsConfig,
+  resolveLocalRuntimeFiles,
+} from "@senclaw/config";
 import {
   createChildLogger,
   createLogger,
@@ -34,9 +38,11 @@ import {
   InMemoryAuditLogRepository,
 } from "./auth/repositories.js";
 import { authPlugin } from "./plugins/auth.js";
+import { ApprovalQueue } from "./approval-queue.js";
 import { correlationIdPlugin } from "./plugins/correlation-id.js";
 import { errorHandlerPlugin } from "./plugins/error-handler.js";
 import { agentRoutes } from "./routes/agents.js";
+import { approvalRoutes } from "./routes/approvals.js";
 import {
   type ConnectorLifecycle,
   connectorRoutes,
@@ -103,6 +109,7 @@ export interface CreateServerOptions {
   queueDriver?: QueueDriverLike;
   pollingFetcher?: PollingFetcherLike;
   runtimeSettingsPath?: string;
+  approvalQueue?: ApprovalQueue;
 }
 
 const HIGH_VOLUME_PATHS = new Set(["/health", "/metrics"]);
@@ -226,6 +233,8 @@ export async function createServer(options: CreateServerOptions = {}): Promise<{
   const app = Fastify({
     logger: false,
   });
+  const approvalQueue = options.approvalQueue ?? new ApprovalQueue();
+  const permissions = loadGlobalPermissionsConfig();
   const runtimeSettingsStore = createRuntimeSettingsStore(
     options.runtimeSettingsPath ??
       resolveLocalRuntimeFiles(process.cwd()).settingsFile,
@@ -363,7 +372,12 @@ export async function createServer(options: CreateServerOptions = {}): Promise<{
   }
 
   const toolRegistry = new ToolRegistry(config.toolTimeoutMs);
-  registerBuiltinTools(toolRegistry);
+  registerBuiltinTools(toolRegistry, {
+    permissions,
+    requestApproval(request) {
+      return approvalQueue.create(request).id;
+    },
+  });
 
   const checks: Record<string, HealthCheck> = {
     gateway: { check: () => ({ status: "healthy" as const }) },
@@ -590,6 +604,11 @@ export async function createServer(options: CreateServerOptions = {}): Promise<{
   await app.register(runtimeSettingsRoutes, {
     prefix: "/api/runtime/settings",
     store: runtimeSettingsStore,
+  });
+
+  await app.register(approvalRoutes, {
+    prefix: "/api/runtime/approvals",
+    approvalQueue,
   });
 
   await app.register(keyRoutes, {

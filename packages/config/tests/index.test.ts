@@ -1,5 +1,35 @@
+﻿import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { loadConfig, loadProviderSmokeConfig } from "../src/index.js";
+import {
+  DEFAULT_GLOBAL_PERMISSIONS,
+  GlobalPermissionsConfigSchema,
+  loadConfig,
+  loadGlobalPermissionsConfig,
+  loadProviderSmokeConfig,
+} from "../src/index.js";
+
+const tempDirs: string[] = [];
+
+function createTempConfigFile(contents?: unknown): string {
+  const dir = mkdtempSync(join(tmpdir(), "senclaw-config-"));
+  tempDirs.push(dir);
+  const configFile = join(dir, ".senclawrc");
+  if (contents !== undefined) {
+    writeFileSync(configFile, JSON.stringify(contents, null, 2), "utf8");
+  }
+  return configFile;
+}
+
+afterEach(() => {
+  while (tempDirs.length > 0) {
+    const dir = tempDirs.pop();
+    if (dir) {
+      rmSync(dir, { force: true, recursive: true });
+    }
+  }
+});
 
 describe("loadConfig", () => {
   const originalEnv = { ...process.env };
@@ -102,6 +132,87 @@ describe("loadConfig", () => {
 
     expect(() => loadConfig(isolatedWorkspaceRoot)).toThrow(
       "SENCLAW_LOG_SAMPLING_RATE",
+    );
+  });
+
+  it("provides safe default global permissions", () => {
+    expect(GlobalPermissionsConfigSchema.parse({})).toEqual({
+      filesystem: {
+        allowAllWrites: false,
+        writeAllowedPaths: [],
+        promptForElevation: true,
+      },
+      shell: {
+        enabled: true,
+        enforcementMode: "managed",
+        promptForElevation: true,
+      },
+    });
+  });
+
+  it("parses explicit global permissions", () => {
+    expect(
+      GlobalPermissionsConfigSchema.parse({
+        filesystem: {
+          allowAllWrites: true,
+          writeAllowedPaths: ["D:\\work"],
+          promptForElevation: false,
+        },
+        shell: {
+          enabled: false,
+          enforcementMode: "managed",
+          promptForElevation: false,
+        },
+      }),
+    ).toEqual({
+      filesystem: {
+        allowAllWrites: true,
+        writeAllowedPaths: ["D:\\work"],
+        promptForElevation: false,
+      },
+      shell: {
+        enabled: false,
+        enforcementMode: "managed",
+        promptForElevation: false,
+      },
+    });
+  });
+
+  it("loads global permissions from the shared user config file", () => {
+    const configFile = createTempConfigFile({
+      permissions: {
+        filesystem: {
+          allowAllWrites: false,
+          writeAllowedPaths: ["D:\\work"],
+          promptForElevation: false,
+        },
+        shell: {
+          enabled: true,
+          enforcementMode: "managed",
+          promptForElevation: true,
+        },
+      },
+    });
+
+    expect(loadGlobalPermissionsConfig(configFile)).toEqual({
+      filesystem: {
+        allowAllWrites: false,
+        writeAllowedPaths: ["D:\\work"],
+        promptForElevation: false,
+      },
+      shell: {
+        enabled: true,
+        enforcementMode: "managed",
+        promptForElevation: true,
+      },
+    });
+  });
+
+  it("falls back to safe defaults when the shared user config file is invalid", () => {
+    const configFile = createTempConfigFile({ permissions: "invalid" });
+
+    expect(loadGlobalPermissionsConfig(configFile)).toEqual(
+      DEFAULT_GLOBAL_PERMISSIONS,
     );
   });
 });

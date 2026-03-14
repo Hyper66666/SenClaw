@@ -4,6 +4,22 @@ import type { FastifyInstance } from "fastify";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createServer } from "../src/server.js";
 
+async function waitForFinishedSpans(
+  exporter: InMemorySpanExporter,
+  expectedCount: number,
+) {
+  const deadline = Date.now() + 1_000;
+  while (Date.now() < deadline) {
+    const spans = exporter.getFinishedSpans();
+    if (spans.length >= expectedCount) {
+      return spans;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+
+  return exporter.getFinishedSpans();
+}
+
 describe("Gateway API", () => {
   let app: FastifyInstance;
   let adminKey = "";
@@ -218,6 +234,48 @@ describe("Gateway API", () => {
     });
   });
 
+  describe("GET /api/v1/runs", () => {
+    it("lists submitted runs", async () => {
+      const agentRes = await app.inject({
+        method: "POST",
+        url: "/api/v1/agents",
+        headers: authHeaders(),
+        payload: {
+          name: "Runs Agent",
+          systemPrompt: "Track runs",
+          provider: { provider: "test-provider", model: "test" },
+          tools: [],
+        },
+      });
+      const agent = agentRes.json();
+
+      const runRes = await app.inject({
+        method: "POST",
+        url: "/api/v1/tasks",
+        headers: authHeaders(),
+        payload: { agentId: agent.id, input: "List me" },
+      });
+      const run = runRes.json();
+
+      const response = await app.inject({
+        method: "GET",
+        url: "/api/v1/runs",
+        headers: authHeaders(),
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            id: run.id,
+            agentId: agent.id,
+            input: "List me",
+          }),
+        ]),
+      );
+    });
+  });
+
   describe("Correlation ID", () => {
     it("returns x-correlation-id header", async () => {
       const response = await app.inject({
@@ -411,7 +469,7 @@ describe("Gateway tracing", () => {
 
       expect(response.statusCode).toBe(200);
 
-      const spans = exporter.getFinishedSpans();
+      const spans = await waitForFinishedSpans(exporter, 1);
       expect(
         spans.some(
           (span) =>

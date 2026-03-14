@@ -17,7 +17,7 @@ export interface SandboxedToolRunnerOptions {
 
 export interface SandboxedToolHandler {
   definition: ToolDefinition;
-  execute: (args: unknown) => Promise<string> | string;
+  execute: (args: unknown) => Promise<unknown> | unknown;
 }
 
 interface ResolvedSandboxOptions {
@@ -745,7 +745,7 @@ export class SandboxedToolRunner {
     args: unknown,
     sandboxOptions: ResolvedSandboxOptions,
     sandboxDirectory?: string,
-  ): Promise<string> {
+  ): Promise<unknown> {
     const message: ExecuteMessage = {
       type: "execute",
       handlerSource: handler.execute.toString(),
@@ -771,7 +771,10 @@ export class SandboxedToolRunner {
     }
   }
 
-  async execute(handler: SandboxedToolHandler, args: unknown): Promise<string> {
+  async execute(
+    handler: SandboxedToolHandler,
+    args: unknown,
+  ): Promise<unknown> {
     const sandboxOptions = resolveSandboxOptions(
       handler.definition,
       this.options,

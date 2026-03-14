@@ -1,4 +1,4 @@
-import { SqliteAgentRepository } from "./agent-repository.js";
+﻿import { SqliteAgentRepository } from "./agent-repository.js";
 import { SqliteApiKeyRepository } from "./api-key-repository.js";
 import { SqliteAuditLogRepository } from "./audit-log-repository.js";
 import { SqliteConnectorEventRepository } from "./connector-event-repository.js";
@@ -73,3 +73,4 @@ export { SqliteExecutionRepository } from "./execution-repository.js";
 export { SqliteConnectorRepository } from "./connector-repository.js";
 export { SqliteConnectorEventRepository } from "./connector-event-repository.js";
 export * from "./serialization.js";
+export { agentsTable } from "./schema.js";

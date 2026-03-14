@@ -1,7 +1,8 @@
-import { ApiResponseError, MissingApiKeyError } from "../api-client";
+﻿import { ApiResponseError, MissingApiKeyError } from "../api-client";
 import type { ConsoleLocale } from "./locale";
 
 export const API_KEY_STORAGE_KEY = "senclaw.apiKey";
+export const API_KEY_HASH_PARAM = "gatewayApiKey";
 export { MissingApiKeyError };
 
 export interface StorageLike {
@@ -56,6 +57,22 @@ export function saveStoredApiKey(
 
   storage.removeItem(API_KEY_STORAGE_KEY);
   return undefined;
+}
+
+export function importApiKeyFromHash(
+  hash: string,
+  storage: StorageLike | undefined = getBrowserStorage(),
+): string | undefined {
+  const normalizedHash = hash.startsWith("#") ? hash.slice(1) : hash;
+  const params = new URLSearchParams(normalizedHash);
+  const normalized = normalizeApiKey(params.get(API_KEY_HASH_PARAM));
+
+  if (!normalized) {
+    return undefined;
+  }
+
+  storage?.setItem(API_KEY_STORAGE_KEY, normalized);
+  return normalized;
 }
 
 export function clearStoredApiKey(

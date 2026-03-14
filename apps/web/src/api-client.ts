@@ -1,4 +1,4 @@
-export interface CreateApiClientOptions {
+﻿export interface CreateApiClientOptions {
   baseUrl?: string;
   apiKey?: string;
   getApiKey?: () => string | undefined;
@@ -43,9 +43,14 @@ function resolveRequestUrl(path: string, baseUrl?: string): string {
 function isProtectedApiPath(path: string): boolean {
   try {
     const parsed = new URL(path, "http://senclaw.local");
-    return parsed.pathname.startsWith("/api/v1/");
+    return (
+      parsed.pathname.startsWith("/api/v1/") ||
+      parsed.pathname.startsWith("/api/runtime/approvals")
+    );
   } catch {
-    return path.startsWith("/api/v1/");
+    return (
+      path.startsWith("/api/v1/") || path.startsWith("/api/runtime/approvals")
+    );
   }
 }
 

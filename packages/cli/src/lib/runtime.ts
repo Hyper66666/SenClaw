@@ -17,7 +17,8 @@ export function findSenclawWorkspaceRoot(
   while (true) {
     if (
       existsSync(resolve(current, "pnpm-workspace.yaml")) &&
-      existsSync(resolve(current, "scripts", "local-runtime.ts"))
+      (existsSync(resolve(current, "scripts", "local-runtime.ts")) ||
+        existsSync(resolve(current, "scripts", "local-runtime.js")))
     ) {
       return current;
     }
@@ -53,8 +54,8 @@ export function createRuntimeCommandSpec(
   workspaceRoot: string,
 ): RuntimeCommandSpec {
   return {
-    command: process.platform === "win32" ? "corepack.cmd" : "corepack",
-    args: ["pnpm", "exec", "tsx", "scripts/local-runtime.ts", action],
+    command: process.execPath,
+    args: [resolve(workspaceRoot, "scripts", "local-runtime.js"), action],
     workspaceRoot,
   };
 }

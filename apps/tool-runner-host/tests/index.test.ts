@@ -1,4 +1,5 @@
-﻿import { existsSync } from "node:fs";
+﻿import { spawn } from "node:child_process";
+import { existsSync } from "node:fs";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { type Server, createServer } from "node:http";
 import type { AddressInfo } from "node:net";
@@ -67,6 +68,30 @@ function stopServer(server: Server): Promise<void> {
 
       resolve();
     });
+  });
+}
+
+async function supportsCpuProbe(): Promise<boolean> {
+  if (process.platform !== "win32") {
+    return true;
+  }
+
+  return await new Promise((resolve) => {
+    const probe = spawn(
+      "powershell.exe",
+      [
+        "-NoProfile",
+        "-Command",
+        "$process = Get-Process -Id 13116 -ErrorAction SilentlyContinue; if ($null -ne $process) { Write-Output $process.CPU }",
+      ],
+      {
+        stdio: ["ignore", "pipe", "pipe"],
+        windowsHide: true,
+      },
+    );
+
+    probe.once("error", () => resolve(false));
+    probe.once("exit", (code) => resolve(code === 0));
   });
 }
 
@@ -297,6 +322,10 @@ describe("ToolRegistry", () => {
     });
 
     it("enforces maxCpu limits for sandboxed tools", async () => {
+      if (!(await supportsCpuProbe())) {
+        return;
+      }
+
       registry.register(
         {
           name: "sandboxed-cpu-limit",

@@ -1,10 +1,148 @@
-import { Card, ErrorMessage, LoadingSpinner, Textarea } from "@/components/ui";
+﻿import { useConsoleLocale } from "@/components/LocaleProvider";
+import {
+  Badge,
+  Card,
+  ErrorMessage,
+  LoadingSpinner,
+  Textarea,
+} from "@/components/ui";
 import { Button } from "@/components/ui/Button";
-import { useConsoleLocale } from "@/components/LocaleProvider";
-import { useAgents, useSubmitTask } from "@/hooks/useAPI";
+import {
+  useAgents,
+  useRun,
+  useRunMessages,
+  useSubmitTask,
+} from "@/hooks/useAPI";
+import type { Message, Run } from "@/lib/api";
 import { describeConsoleError } from "@/lib/auth-session";
+import type { ConsoleCopy } from "@/lib/locale";
 import { useEffect, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+
+function getStatusVariant(
+  status: string,
+): "default" | "success" | "warning" | "danger" {
+  switch (status) {
+    case "completed":
+      return "success";
+    case "running":
+      return "warning";
+    case "failed":
+      return "danger";
+    default:
+      return "default";
+  }
+}
+
+function createMessageKey(message: Message, index: number): string {
+  return [
+    message.role,
+    message.toolCallId ?? "",
+    message.content ?? "",
+    message.toolCalls?.map((call) => call.id).join(",") ?? "",
+    index,
+  ].join("|");
+}
+
+export interface SubmittedRunPanelProps {
+  run?: Run;
+  messages?: Message[];
+  isLoading: boolean;
+  detailsHref: string;
+  copy: ConsoleCopy["taskSubmit"];
+}
+
+export function SubmittedRunPanel({
+  run,
+  messages,
+  isLoading,
+  detailsHref,
+  copy,
+}: SubmittedRunPanelProps) {
+  if (isLoading && !run) {
+    return (
+      <Card title={copy.latestRunTitle}>
+        <LoadingSpinner />
+      </Card>
+    );
+  }
+
+  if (!run) {
+    return null;
+  }
+
+  const items = messages ?? [];
+  const emptyMessage =
+    run.status === "pending" || run.status === "running"
+      ? copy.waitingForResponse
+      : copy.noMessagesYet;
+
+  return (
+    <Card
+      title={copy.latestRunTitle}
+      actions={
+        <Link to={detailsHref} className="text-sm text-primary hover:underline">
+          {copy.viewRunDetails}
+        </Link>
+      }
+    >
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
+          <span className="text-sm font-medium text-muted-foreground">
+            {copy.latestRunStatus}
+          </span>
+          <Badge variant={getStatusVariant(run.status)}>{run.status}</Badge>
+        </div>
+
+        {run.error ? (
+          <p className="text-sm text-destructive">{run.error}</p>
+        ) : null}
+
+        <div className="space-y-3">
+          <h2 className="text-sm font-medium text-muted-foreground">
+            {copy.latestRunMessages}
+          </h2>
+          {items.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{emptyMessage}</p>
+          ) : (
+            <div className="space-y-3">
+              {items.map((message, index) => (
+                <div
+                  key={createMessageKey(message, index)}
+                  className="rounded-lg border p-3"
+                >
+                  <div className="mb-2">
+                    <Badge>{message.role}</Badge>
+                  </div>
+                  {message.content ? (
+                    <p className="whitespace-pre-wrap text-sm">
+                      {message.content}
+                    </p>
+                  ) : null}
+                  {message.toolCalls && message.toolCalls.length > 0 ? (
+                    <div className="mt-2 space-y-2">
+                      {message.toolCalls.map((call) => (
+                        <div
+                          key={call.id}
+                          className="rounded bg-muted p-2 font-mono text-xs"
+                        >
+                          <div className="font-semibold">{call.name}</div>
+                          <pre className="mt-1 whitespace-pre-wrap">
+                            {call.arguments}
+                          </pre>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </Card>
+  );
+}
 
 export function TaskSubmit() {
   const { copy, locale } = useConsoleLocale();
@@ -21,6 +159,10 @@ export function TaskSubmit() {
   const [agentId, setAgentId] = useState(searchParams.get("agentId") || "");
   const [input, setInput] = useState("");
   const [submitError, setSubmitError] = useState<unknown>();
+  const [activeRunId, setActiveRunId] = useState<string>();
+
+  const activeRunQuery = useRun(activeRunId ?? "");
+  const activeMessagesQuery = useRunMessages(activeRunId ?? "");
 
   useEffect(() => {
     if (agents && agents.length > 0 && !agentId) {
@@ -32,8 +174,9 @@ export function TaskSubmit() {
     e.preventDefault();
     try {
       setSubmitError(undefined);
+      setActiveRunId(undefined);
       const run = await submitTask.mutateAsync({ agentId, input });
-      navigate(`/runs/${run.id}`);
+      setActiveRunId(run.id);
     } catch (error) {
       setSubmitError(error);
     }
@@ -66,6 +209,13 @@ export function TaskSubmit() {
   const submitErrorState = submitError
     ? describeConsoleError(submitError, locale)
     : undefined;
+  const activeRunErrorState =
+    activeRunQuery.error || activeMessagesQuery.error
+      ? describeConsoleError(
+          activeRunQuery.error ?? activeMessagesQuery.error,
+          locale,
+        )
+      : undefined;
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
@@ -130,6 +280,27 @@ export function TaskSubmit() {
           </div>
         </Card>
       </form>
+
+      {activeRunErrorState ? (
+        <ErrorMessage
+          title={activeRunErrorState.title}
+          message={activeRunErrorState.message}
+          onRetry={() => {
+            void activeRunQuery.refetch();
+            void activeMessagesQuery.refetch();
+          }}
+        />
+      ) : null}
+
+      {activeRunId ? (
+        <SubmittedRunPanel
+          run={activeRunQuery.data}
+          messages={activeMessagesQuery.data}
+          isLoading={activeRunQuery.isLoading || activeMessagesQuery.isLoading}
+          detailsHref={`/runs/${activeRunId}`}
+          copy={copy.taskSubmit}
+        />
+      ) : null}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import type {
+﻿import type {
   Agent,
   CreateAgent,
   IAgentRepository,
@@ -78,6 +78,10 @@ export class AgentService {
 
   async getRun(id: string): Promise<Run | undefined> {
     return this.runRepo.get(id);
+  }
+
+  async listRuns(): Promise<Run[]> {
+    return this.runRepo.list();
   }
 
   async getRunMessages(runId: string): Promise<Message[]> {

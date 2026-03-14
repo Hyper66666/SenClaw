@@ -1,4 +1,4 @@
-import type { AgentService } from "@senclaw/agent-runner";
+﻿import type { AgentService } from "@senclaw/agent-runner";
 import type { FastifyInstance } from "fastify";
 import { readRoles, requireRoles } from "../auth/authorization.js";
 
@@ -8,6 +8,10 @@ export async function runRoutes(
 ): Promise<void> {
   const { agentService } = opts;
 
+  app.get("/", { preHandler: requireRoles(...readRoles) }, async () =>
+    agentService.listRuns(),
+  );
+
   app.get<{ Params: { id: string } }>(
     "/:id",
     { preHandler: requireRoles(...readRoles) },
@@ -16,7 +20,7 @@ export async function runRoutes(
       if (!run) {
         reply.status(404).send({
           error: "NOT_FOUND",
-          message: `Run \"${request.params.id}\" not found`,
+          message: `Run "${request.params.id}" not found`,
         });
         return;
       }
@@ -32,7 +36,7 @@ export async function runRoutes(
       if (!run) {
         reply.status(404).send({
           error: "NOT_FOUND",
-          message: `Run \"${request.params.id}\" not found`,
+          message: `Run "${request.params.id}" not found`,
         });
         return;
       }

@@ -1,4 +1,4 @@
-import { performance } from "node:perf_hooks";
+﻿import { performance } from "node:perf_hooks";
 import { createChildLogger, createLogger } from "@senclaw/logging";
 import {
   getMetricsRegistry,
@@ -32,6 +32,21 @@ const logger = createLogger(
 export interface ExecutionOptions {
   maxTurns: number;
   llmTimeoutMs: number;
+}
+
+export function formatToolResultForModel(result: ToolResult): string {
+  if (result.success) {
+    return result.content ?? "";
+  }
+
+  if (result.approvalRequired) {
+    const approvalId = result.approvalRequestId
+      ? ` Approval request ID: ${result.approvalRequestId}.`
+      : "";
+    return `Approval required: ${result.error ?? "This action requires operator approval."}${approvalId}`;
+  }
+
+  return `Error: ${result.error ?? "Unknown error"}`;
 }
 
 export async function executeRun(
@@ -88,8 +103,9 @@ export async function executeRun(
         const registeredTools = toolRegistry.listTools();
         const toolsForSdk: Record<string, unknown> = {};
         for (const def of registeredTools) {
-          if (agent.tools.length > 0 && !agent.tools.includes(def.name))
+          if (agent.tools.length > 0 && !agent.tools.includes(def.name)) {
             continue;
+          }
           const toolName = def.name;
           toolsForSdk[toolName] = aiTool({
             description: def.description,
@@ -100,9 +116,7 @@ export async function executeRun(
                 toolName,
                 input,
               );
-              return result.success
-                ? (result.content ?? "")
-                : `Error: ${result.error ?? "Unknown error"}`;
+              return formatToolResultForModel(result);
             },
           });
         }

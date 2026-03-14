@@ -4,12 +4,12 @@ This document records the current release-readiness truth for Senclaw. It is int
 
 ## Go-Live Status Summary
 
-As of March 12, 2026, Senclaw is locally green on Windows and can be used for internal or controlled deployment trials. The baseline go-live gate is close, but it is not fully closed yet.
+As of March 14, 2026, Senclaw is locally green on Windows and can be used for internal or controlled deployment trials. The baseline go-live gate is close, but it is not fully closed yet.
 
 Baseline evidence already recorded:
 
 - `pnpm run build`: pass
-- `pnpm run test`: pass (`33` test files, `217` tests)
+- `pnpm run test`: pass (`46` test files, `267` tests)
 - `pnpm run test:integration`: pass (`6` test files, `20` tests)
 - `pnpm run verify`: pass
 - real OpenAI-compatible smoke validation: pass on March 12, 2026 against the Volcengine Ark OpenAI-compatible endpoint using model `doubao-seed-2.0-pro`; the smoke prompt returned `OK`
@@ -27,10 +27,10 @@ Optional production extensions that are currently NOT claimed:
 
 ## Evidence Baseline
 
-Latest local Windows verification on March 12, 2026 (Node `v20.11.0`, with engine warning because the repository requires Node 22+):
+Latest local Windows verification on March 14, 2026 (Node `v20.11.0`, with engine warning because the repository requires Node 22+):
 
 - `pnpm run build`: pass
-- `pnpm run test`: pass (`33` test files, `217` tests)
+- `pnpm run test`: pass (`46` test files, `267` tests)
 - `pnpm run test:integration`: pass (`6` test files, `20` tests)
 - `pnpm run verify`: pass
 - `cargo build --release --manifest-path native/sandbox-runner/Cargo.toml`: pass
@@ -162,7 +162,7 @@ Remaining blocker:
 
 ### Web Console
 
-Status: functionally usable, awaiting final acceptance evidence
+Status: functionally usable, with proxy-backed authenticated acceptance partially recorded
 
 Evidence:
 
@@ -172,10 +172,12 @@ Evidence:
 - `204 No Content` delete flows no longer throw parse errors
 - dedicated web auth/session tests pass
 - the operator checklist exists in [apps/web/README.md](./apps/web/README.md)
+- on March 14, 2026, authenticated requests through the local web proxy returned the expected statuses: list agents `200`, create agent `201`, submit task `201`, inspect run `200`, and delete agent `204`
+- on March 14, 2026, a real-provider run created from the local runtime completed successfully and produced an assistant reply
 
 Remaining blockers:
 
-- explicit manual acceptance against a protected gateway still needs to be recorded
+- browser-level UI recovery evidence for missing, invalid, and revoked tokens is still pending because local Playwright Chrome launch exits with code 13 on this workstation
 - supported-runtime rerun on Node 22 as part of the final baseline evidence
 
 ### CLI Tool
@@ -185,12 +187,15 @@ Status: implemented enough for real use, but release packaging is incomplete
 Evidence:
 
 - `@senclaw/cli` exists in the workspace
-- build and command scaffolding are present
+- the root `senclaw.cmd` launcher now invokes the built CLI instead of `tsx`
+- `senclaw --help` succeeds locally through the JS launcher path
+- local runtime launchers generate and execute `scripts/local-runtime.js` instead of requiring `tsx` at runtime
 
 Remaining blockers:
 
 - release packaging and npm publication workflow
 - broader CLI-specific test coverage and docs alignment
+- supported-runtime rerun on Node 22 as part of the final baseline evidence
 
 ### Connector Worker
 
@@ -272,7 +277,7 @@ Do not claim full deployment readiness until:
 ## Next Priority Work
 
 1. Re-run the green repository gate on Node 22 and record the evidence.
-2. Run and record protected web-console acceptance against an authenticated gateway.
+2. Record browser-level protected web-console recovery evidence for missing, invalid, and revoked tokens once the local Playwright/Chrome blocker is removed or a manual operator pass is completed.
 3. Record RabbitMQ and Redis live-broker validation if broker-backed support is required.
 4. Record dedicated Linux native sandbox build validation if level 4 native sandbox claims are required.
 

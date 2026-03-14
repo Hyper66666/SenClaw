@@ -1,19 +1,47 @@
 {
   "files": [],
   "references": [
-    { "path": "./packages/cli" },
-    { "path": "./packages/protocol" },
-    { "path": "./packages/config" },
-    { "path": "./packages/connector-worker" },
-    { "path": "./packages/logging" },
-    { "path": "./packages/observability" },
-    { "path": "./packages/scheduler" },
-    { "path": "./packages/storage" },
-    { "path": "./apps/gateway" },
-    { "path": "./apps/web" },
-    { "path": "./apps/agent-runner" },
-    { "path": "./apps/connector-worker" },
-    { "path": "./apps/tool-runner-host" },
-    { "path": "./apps/scheduler" }
+    {
+      "path": "./packages/cli"
+    },
+    {
+      "path": "./packages/protocol"
+    },
+    {
+      "path": "./packages/config"
+    },
+    {
+      "path": "./packages/connector-worker"
+    },
+    {
+      "path": "./packages/logging"
+    },
+    {
+      "path": "./packages/observability"
+    },
+    {
+      "path": "./packages/scheduler"
+    },
+    {
+      "path": "./packages/storage"
+    },
+    {
+      "path": "./apps/gateway"
+    },
+    {
+      "path": "./apps/web"
+    },
+    {
+      "path": "./apps/agent-runner"
+    },
+    {
+      "path": "./apps/connector-worker"
+    },
+    {
+      "path": "./apps/tool-runner-host"
+    },
+    {
+      "path": "./apps/scheduler"
+    }
   ]
 }

@@ -1,4 +1,4 @@
-﻿import { spawn, spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import {
   closeSync,
@@ -14,7 +14,6 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   LOCAL_RUNTIME_AGENT_NAME,
-  type PendingApprovalSummary,
   createDefaultLocalRuntimeAgent,
   createStartupBanner,
   createWebRuntimeProcessSpec,
@@ -35,44 +34,35 @@ import {
   serializeProvider,
   serializeTools,
 } from "../packages/storage/dist/index.js";
-
 const workspaceRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const runtimeFiles = resolveLocalRuntimeFiles(workspaceRoot);
 const corepackCommand =
   process.platform === "win32" ? "corepack.cmd" : "corepack";
 const ADMIN_API_HASH_PARAM = "gatewayApiKey";
-
-function getGatewayPort(): string {
+function getGatewayPort() {
   return process.env.SENCLAW_GATEWAY_PORT ?? "4100";
 }
-
-function getWebPort(): string {
+function getWebPort() {
   return process.env.SENCLAW_WEB_PORT ?? "3000";
 }
-
-function getGatewayUrl(): string {
+function getGatewayUrl() {
   return `http://localhost:${getGatewayPort()}`;
 }
-
-function getWebUrl(): string {
+function getWebUrl() {
   return `http://localhost:${getWebPort()}`;
 }
-
-function readPidFile(filePath: string): number | undefined {
+function readPidFile(filePath) {
   if (!existsSync(filePath)) {
     return undefined;
   }
-
   const raw = readFileSync(filePath, "utf8").trim();
   const pid = Number.parseInt(raw, 10);
   return Number.isFinite(pid) ? pid : undefined;
 }
-
-function isProcessAlive(pid: number | undefined): boolean {
+function isProcessAlive(pid) {
   if (!pid) {
     return false;
   }
-
   try {
     process.kill(pid, 0);
     return true;
@@ -80,8 +70,7 @@ function isProcessAlive(pid: number | undefined): boolean {
     return false;
   }
 }
-
-async function isHttpReachable(url: string): Promise<boolean> {
+async function isHttpReachable(url) {
   try {
     const response = await fetch(url);
     return response.ok || response.status < 500;
@@ -89,8 +78,7 @@ async function isHttpReachable(url: string): Promise<boolean> {
     return false;
   }
 }
-
-async function waitForUrl(url: string, timeoutMs = 20_000): Promise<void> {
+async function waitForUrl(url, timeoutMs = 20_000) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     if (await isHttpReachable(url)) {
@@ -98,14 +86,9 @@ async function waitForUrl(url: string, timeoutMs = 20_000): Promise<void> {
     }
     await new Promise((resolvePromise) => setTimeout(resolvePromise, 500));
   }
-
   throw new Error(`Timed out waiting for ${url}`);
 }
-
-async function fetchPendingApprovals(
-  gatewayUrl: string,
-  adminKey: string,
-): Promise<PendingApprovalSummary[]> {
+async function fetchPendingApprovals(gatewayUrl, adminKey) {
   try {
     const response = await fetch(`${gatewayUrl}/api/runtime/approvals`, {
       headers: {
@@ -115,35 +98,28 @@ async function fetchPendingApprovals(
     if (!response.ok) {
       return [];
     }
-
-    const payload = (await response.json()) as PendingApprovalSummary[];
+    const payload = await response.json();
     return Array.isArray(payload) ? payload : [];
   } catch {
     return [];
   }
 }
-
-function buildWorkspace(): void {
+function buildWorkspace() {
   const result = spawnSync(corepackCommand, ["pnpm", "run", "build"], {
     cwd: workspaceRoot,
     stdio: "inherit",
     env: process.env,
   });
-
   if (result.status !== 0) {
     throw new Error("Build failed. See output above.");
   }
 }
-
-async function ensureAdminKey(dbUrl: string): Promise<string> {
+async function ensureAdminKey(dbUrl) {
   mkdirSync(runtimeFiles.runtimeDir, { recursive: true });
-
   if (existsSync(runtimeFiles.adminKeyFile)) {
     return readFileSync(runtimeFiles.adminKeyFile, "utf8").trim();
   }
-
   const storage = createStorage(dbUrl);
-
   try {
     const rawKey = generateApiKey();
     await storage.apiKeys.create({
@@ -163,32 +139,21 @@ async function ensureAdminKey(dbUrl: string): Promise<string> {
       revokedBy: null,
       revokedReason: null,
     });
-
     writeFileSync(runtimeFiles.adminKeyFile, `${rawKey}\n`, "utf8");
     return rawKey;
   } finally {
     storage.close();
   }
 }
-
-function syncLocalRuntimeAgent(dbUrl: string, model: string): void {
+function syncLocalRuntimeAgent(dbUrl, model) {
   const db = openDatabase(dbUrl);
   runMigrations(db);
-
   try {
     const existing = db.$client
       .prepare(
         "select id, system_prompt as systemPrompt, provider, tools from agents where name = ?",
       )
-      .get(LOCAL_RUNTIME_AGENT_NAME) as
-      | {
-          id: string;
-          systemPrompt: string;
-          provider: string;
-          tools: string;
-        }
-      | undefined;
-
+      .get(LOCAL_RUNTIME_AGENT_NAME);
     const desired = createDefaultLocalRuntimeAgent(
       {
         provider: "openai",
@@ -203,7 +168,6 @@ function syncLocalRuntimeAgent(dbUrl: string, model: string): void {
     );
     const serializedProvider = serializeProvider(desired.provider);
     const serializedTools = serializeTools(desired.tools ?? []);
-
     if (!existing) {
       db.$client
         .prepare(
@@ -218,7 +182,6 @@ function syncLocalRuntimeAgent(dbUrl: string, model: string): void {
         );
       return;
     }
-
     if (
       existing.systemPrompt === desired.systemPrompt &&
       existing.provider === serializedProvider &&
@@ -226,7 +189,6 @@ function syncLocalRuntimeAgent(dbUrl: string, model: string): void {
     ) {
       return;
     }
-
     db.$client
       .prepare(
         "update agents set system_prompt = ?, provider = ?, tools = ? where id = ?",
@@ -241,15 +203,14 @@ function syncLocalRuntimeAgent(dbUrl: string, model: string): void {
     db.$client.close();
   }
 }
-
 function spawnBackgroundProcess(
-  command: string,
-  args: string[],
-  logFile: string,
-  errorFile: string,
-  env: NodeJS.ProcessEnv,
+  command,
+  args,
+  logFile,
+  errorFile,
+  env,
   cwd = workspaceRoot,
-): number {
+) {
   const stdout = openSync(logFile, "a");
   const stderr = openSync(errorFile, "a");
   const child = spawn(command, args, {
@@ -258,44 +219,34 @@ function spawnBackgroundProcess(
     detached: true,
     stdio: ["ignore", stdout, stderr],
   });
-
   child.unref();
   closeSync(stdout);
   closeSync(stderr);
-
   if (!child.pid) {
     throw new Error(`Failed to start ${command}`);
   }
-
   return child.pid;
 }
-
-async function ensureNoUntrackedCollision(
-  service: "gateway" | "web",
-): Promise<void> {
+async function ensureNoUntrackedCollision(service) {
   const pidFile =
     service === "gateway"
       ? runtimeFiles.gatewayPidFile
       : runtimeFiles.webPidFile;
   const url = service === "gateway" ? `${getGatewayUrl()}/health` : getWebUrl();
   const trackedPid = readPidFile(pidFile);
-
   if (isProcessAlive(trackedPid)) {
     return;
   }
-
   if (existsSync(pidFile)) {
     rmSync(pidFile, { force: true });
   }
-
   if (await isHttpReachable(url)) {
     throw new Error(
       `Detected an untracked ${service} process on ${url}. Stop it first or use the launcher stop script if it was started by SenClaw.`,
     );
   }
 }
-
-async function start(): Promise<void> {
+async function start() {
   loadConfig(workspaceRoot);
   const provider = loadProviderSmokeConfig(process.env);
   const gatewayPort = getGatewayPort();
@@ -313,29 +264,23 @@ async function start(): Promise<void> {
     `${webUrl}/`,
   ).toString();
   const webProcessSpec = createWebRuntimeProcessSpec(workspaceRoot, webPort);
-
   await ensureNoUntrackedCollision("gateway");
   await ensureNoUntrackedCollision("web");
-
   const existingGatewayPid = readPidFile(runtimeFiles.gatewayPidFile);
   const existingWebPid = readPidFile(runtimeFiles.webPidFile);
   const shouldStartGateway = !isProcessAlive(existingGatewayPid);
   const shouldStartWeb = !isProcessAlive(existingWebPid);
   const reusedGatewayPid = existingGatewayPid;
   const reusedWebPid = existingWebPid;
-
   if (!shouldStartGateway && reusedGatewayPid === undefined) {
     throw new Error("Tracked gateway PID is missing.");
   }
-
   if (!shouldStartWeb && reusedWebPid === undefined) {
     throw new Error("Tracked web PID is missing.");
   }
-
   if (shouldStartGateway || shouldStartWeb) {
     buildWorkspace();
   }
-
   const env = {
     ...process.env,
     SENCLAW_DB_URL: dbUrl,
@@ -344,7 +289,6 @@ async function start(): Promise<void> {
     SENCLAW_OPENAI_BASE_URL: provider.baseURL,
     SENCLAW_OPENAI_MODEL: provider.model,
   };
-
   const gatewayPid = shouldStartGateway
     ? spawnBackgroundProcess(
         process.execPath,
@@ -355,7 +299,6 @@ async function start(): Promise<void> {
       )
     : reusedGatewayPid;
   writeFileSync(runtimeFiles.gatewayPidFile, `${gatewayPid}\n`, "utf8");
-
   const webPid = shouldStartWeb
     ? spawnBackgroundProcess(
         webProcessSpec.command,
@@ -367,12 +310,9 @@ async function start(): Promise<void> {
       )
     : reusedWebPid;
   writeFileSync(runtimeFiles.webPidFile, `${webPid}\n`, "utf8");
-
   await waitForUrl(`${gatewayUrl}/health`);
   await waitForUrl(webUrl);
-
   const pendingApprovals = await fetchPendingApprovals(gatewayUrl, adminKey);
-
   console.log(
     createStartupBanner({
       locale: settings.locale,
@@ -386,8 +326,7 @@ async function start(): Promise<void> {
     }),
   );
 }
-
-function stopTrackedProcess(pidFile: string): void {
+function stopTrackedProcess(pidFile) {
   const pid = readPidFile(pidFile);
   if (!pid || !isProcessAlive(pid)) {
     if (existsSync(pidFile)) {
@@ -395,7 +334,6 @@ function stopTrackedProcess(pidFile: string): void {
     }
     return;
   }
-
   if (process.platform === "win32") {
     spawnSync("taskkill", ["/PID", String(pid), "/T", "/F"], {
       stdio: "ignore",
@@ -403,27 +341,21 @@ function stopTrackedProcess(pidFile: string): void {
   } else {
     process.kill(pid);
   }
-
   if (existsSync(pidFile)) {
     unlinkSync(pidFile);
   }
 }
-
-function stop(): void {
+function stop() {
   const locale = readRuntimeSettings(runtimeFiles.settingsFile).locale;
   stopTrackedProcess(runtimeFiles.webPidFile);
   stopTrackedProcess(runtimeFiles.gatewayPidFile);
-
   if (locale === "zh-CN") {
     console.log("SenClaw \u5df2\u505c\u6b62\u3002");
     return;
   }
-
   console.log("SenClaw stopped.");
 }
-
 const command = process.argv[2] ?? "start";
-
 if (command === "start") {
   start().catch((error) => {
     console.error(error instanceof Error ? error.message : String(error));

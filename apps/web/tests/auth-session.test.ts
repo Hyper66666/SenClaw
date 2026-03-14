@@ -1,11 +1,13 @@
-import { describe, expect, it } from "vitest";
+﻿import { describe, expect, it } from "vitest";
 import { ApiResponseError } from "../src/index";
 import {
+  API_KEY_HASH_PARAM,
   API_KEY_STORAGE_KEY,
   MissingApiKeyError,
   type StorageLike,
   clearStoredApiKey,
   describeConsoleError,
+  importApiKeyFromHash,
   loadStoredApiKey,
   saveStoredApiKey,
 } from "../src/lib/auth-session";
@@ -37,6 +39,22 @@ describe("auth session storage", () => {
     expect(storage.getItem(API_KEY_STORAGE_KEY)).toBe("sk_test_token");
 
     clearStoredApiKey(storage);
+    expect(loadStoredApiKey(storage)).toBeUndefined();
+  });
+
+  it("imports an API key from the URL hash", () => {
+    const storage = new MemoryStorage();
+
+    expect(
+      importApiKeyFromHash(`#${API_KEY_HASH_PARAM}=sk_hash_token`, storage),
+    ).toBe("sk_hash_token");
+    expect(loadStoredApiKey(storage)).toBe("sk_hash_token");
+  });
+
+  it("ignores unrelated URL hash values", () => {
+    const storage = new MemoryStorage();
+
+    expect(importApiKeyFromHash("#tab=agents", storage)).toBeUndefined();
     expect(loadStoredApiKey(storage)).toBeUndefined();
   });
 });

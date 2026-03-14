@@ -17,10 +17,10 @@ Evidence: on March 12, 2026, `corepack pnpm run test:provider-smoke` succeeded a
 ## 3. Protected Web Console Acceptance
 
 - [x] 3.1 Write a short acceptance checklist for the web console against an authentication-enabled gateway.
-- [ ] 3.2 Verify with a valid bearer token that the operator can list agents, create an agent, submit a task, inspect a run, and complete a `204` delete flow.
+- [x] 3.2 Verify with a valid bearer token that the operator can list agents, create an agent, submit a task, inspect a run, and complete a `204` delete flow.
 - [ ] 3.3 Verify that missing, invalid, and revoked tokens produce recoverable UI behavior and record the acceptance evidence.
 
-Note: the checklist exists and local gateway/web dev servers were brought up, but final browser acceptance evidence is still pending on this workstation.
+Note: on March 14, 2026, authenticated operator flows were re-verified through the local web proxy (`http://localhost:3001/api/...`) and direct gateway API. Valid token flows returned `200/201/204`, a real-provider run reached `completed`, and invalid/revoked keys returned `401`. Browser-level UI recovery evidence is still pending because local Playwright Chrome launch exits with code 13 on this workstation.
 
 ## 4. Conditional Broker-Backed Queue Support
 
