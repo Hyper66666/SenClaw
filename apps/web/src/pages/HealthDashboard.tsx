@@ -1,7 +1,8 @@
-import { Badge, Card, ErrorMessage, LoadingSpinner } from "@/components/ui";
+import { Badge, Card } from "@/components/ui";
+import { QueryStateBoundary } from "@/components/QueryStateBoundary";
 import { useConsoleLocale } from "@/components/LocaleProvider";
 import { useHealth } from "@/hooks/useAPI";
-import { describeConsoleError } from "@/lib/auth-session";
+import { getHealthStatusVariant } from "@/lib/status";
 
 function StatusIcon({ status, label }: { status: string; label: string }) {
   switch (status) {
@@ -65,36 +66,6 @@ export function HealthDashboard() {
   const { copy, locale } = useConsoleLocale();
   const { data: health, isLoading, error, refetch } = useHealth();
 
-  if (isLoading) {
-    return <LoadingSpinner />;
-  }
-
-  if (error) {
-    const errorState = describeConsoleError(error, locale);
-    return (
-      <ErrorMessage
-        title={errorState.title}
-        message={errorState.message}
-        onRetry={() => refetch()}
-      />
-    );
-  }
-
-  const getStatusVariant = (
-    status: string,
-  ): "default" | "success" | "warning" | "danger" => {
-    switch (status) {
-      case "healthy":
-        return "success";
-      case "degraded":
-        return "warning";
-      case "unhealthy":
-        return "danger";
-      default:
-        return "default";
-    }
-  };
-
   const getStatusLabel = (status: string) => {
     switch (status) {
       case "healthy":
@@ -109,56 +80,67 @@ export function HealthDashboard() {
   };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">{copy.health.title}</h1>
-        <p className="mt-2 text-muted-foreground">{copy.health.description}</p>
-      </div>
-
-      <Card>
-        <div className="flex items-center gap-4">
-          <StatusIcon
-            status={health?.status || "unknown"}
-            label={getStatusLabel(health?.status || "unknown")}
-          />
-          <div>
-            <h2 className="text-xl font-semibold">
-              {copy.health.overallStatus}
-            </h2>
-            <Badge
-              variant={getStatusVariant(health?.status || "default")}
-              className="mt-1"
-            >
-              {getStatusLabel(health?.status || "unknown")}
-            </Badge>
-          </div>
+    <QueryStateBoundary
+      isLoading={isLoading}
+      error={error}
+      locale={locale}
+      onRetry={() => {
+        void refetch();
+      }}
+    >
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold">{copy.health.title}</h1>
+          <p className="mt-2 text-muted-foreground">
+            {copy.health.description}
+          </p>
         </div>
-      </Card>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {health?.checks &&
-          Object.entries(health.checks).map(([name, check]) => (
-            <Card key={name}>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-semibold capitalize">{name}</h3>
-                  <StatusIcon
-                    status={check.status}
-                    label={getStatusLabel(check.status)}
-                  />
+        <Card>
+          <div className="flex items-center gap-4">
+            <StatusIcon
+              status={health?.status || "unknown"}
+              label={getStatusLabel(health?.status || "unknown")}
+            />
+            <div>
+              <h2 className="text-xl font-semibold">
+                {copy.health.overallStatus}
+              </h2>
+              <Badge
+                variant={getHealthStatusVariant(health?.status || "default")}
+                className="mt-1"
+              >
+                {getStatusLabel(health?.status || "unknown")}
+              </Badge>
+            </div>
+          </div>
+        </Card>
+
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {health?.checks &&
+            Object.entries(health.checks).map(([name, check]) => (
+              <Card key={name}>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-semibold capitalize">{name}</h3>
+                    <StatusIcon
+                      status={check.status}
+                      label={getStatusLabel(check.status)}
+                    />
+                  </div>
+                  <Badge variant={getHealthStatusVariant(check.status)}>
+                    {getStatusLabel(check.status)}
+                  </Badge>
+                  {check.detail && (
+                    <p className="text-sm text-muted-foreground">
+                      {check.detail}
+                    </p>
+                  )}
                 </div>
-                <Badge variant={getStatusVariant(check.status)}>
-                  {getStatusLabel(check.status)}
-                </Badge>
-                {check.detail && (
-                  <p className="text-sm text-muted-foreground">
-                    {check.detail}
-                  </p>
-                )}
-              </div>
-            </Card>
-          ))}
+              </Card>
+            ))}
+        </div>
       </div>
-    </div>
+    </QueryStateBoundary>
   );
 }

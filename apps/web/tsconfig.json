@@ -22,5 +22,5 @@
     }
   },
   "include": ["src"],
-  "references": []
+  "references": [{ "path": "../../packages/protocol" }]
 }

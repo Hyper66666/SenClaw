@@ -1,60 +1,10 @@
+import type { Agent, CreateAgent, Message, Run, Task } from "@senclaw/protocol";
 import {
   ApiResponseError,
   MissingApiKeyError,
   createApiClient,
 } from "../api-client";
 import { loadStoredApiKey } from "./auth-session";
-
-export interface Agent {
-  id: string;
-  name: string;
-  systemPrompt: string;
-  provider: {
-    provider: string;
-    model: string;
-    temperature?: number;
-    maxTokens?: number;
-  };
-  tools: string[];
-}
-
-export interface CreateAgent {
-  name: string;
-  systemPrompt: string;
-  provider: {
-    provider: string;
-    model: string;
-    temperature?: number;
-    maxTokens?: number;
-  };
-  tools?: string[];
-}
-
-export interface Run {
-  id: string;
-  agentId: string;
-  input: string;
-  status: "pending" | "running" | "completed" | "failed";
-  createdAt: string;
-  updatedAt: string;
-  error?: string;
-}
-
-export interface Message {
-  role: "system" | "user" | "assistant" | "tool";
-  content?: string;
-  toolCalls?: Array<{
-    id: string;
-    name: string;
-    arguments: string;
-  }>;
-  toolCallId?: string;
-}
-
-export interface Task {
-  agentId: string;
-  input: string;
-}
 
 export interface HealthStatus {
   status: "healthy" | "degraded" | "unhealthy";
@@ -68,6 +18,7 @@ export interface HealthStatus {
 }
 
 export { ApiResponseError as APIError, MissingApiKeyError };
+export type { Agent, CreateAgent, Message, Run, Task };
 
 const apiClient = createApiClient({
   getApiKey: loadStoredApiKey,

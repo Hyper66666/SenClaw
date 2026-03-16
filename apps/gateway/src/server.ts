@@ -1,9 +1,3 @@
-﻿import {
-  AgentService,
-  InMemoryAgentRepository,
-  InMemoryMessageRepository,
-  InMemoryRunRepository,
-} from "@senclaw/agent-runner";
 import {
   loadConfig,
   loadGlobalPermissionsConfig,
@@ -16,7 +10,6 @@ import {
   shouldSampleLog,
 } from "@senclaw/logging";
 import {
-  type HealthCheck,
   type TraceExporter,
   type TracingSpan,
   configureMetricsRegistry,
@@ -27,38 +20,21 @@ import {
   setSpanOk,
   startSpan,
 } from "@senclaw/observability";
-import { SchedulerService } from "@senclaw/scheduler";
-import { createStorage } from "@senclaw/storage";
-import { ToolRegistry, registerBuiltinTools } from "@senclaw/tool-runner-host";
+import { registerBuiltinTools, ToolRegistry } from "@senclaw/tool-runner-host";
 import Fastify from "fastify";
 import type { DestinationStream, LevelWithSilent, Logger } from "pino";
-import { ApiKeyService } from "./auth/api-key-service.js";
-import {
-  InMemoryApiKeyRepository,
-  InMemoryAuditLogRepository,
-} from "./auth/repositories.js";
-import { authPlugin } from "./plugins/auth.js";
 import { ApprovalQueue } from "./approval-queue.js";
+import { registerGatewayAuth } from "./assembly/auth.js";
+import {
+  createConnectorRuntime,
+  type PollingFetcherLike,
+  type QueueDriverLike,
+} from "./assembly/connectors.js";
+import { registerGatewayRoutes } from "./assembly/routes.js";
+import { createGatewayRuntimeServices } from "./assembly/runtime-services.js";
+import type { ApiKeyService } from "./auth/api-key-service.js";
 import { correlationIdPlugin } from "./plugins/correlation-id.js";
 import { errorHandlerPlugin } from "./plugins/error-handler.js";
-import { agentRoutes } from "./routes/agents.js";
-import { approvalRoutes } from "./routes/approvals.js";
-import {
-  type ConnectorLifecycle,
-  connectorRoutes,
-} from "./routes/connectors.js";
-import { healthRoutes } from "./routes/health.js";
-import { jobRoutes } from "./routes/jobs.js";
-import { keyRoutes } from "./routes/keys.js";
-import { runRoutes } from "./routes/runs.js";
-import { runtimeSettingsRoutes } from "./routes/runtime-settings.js";
-import { taskRoutes } from "./routes/tasks.js";
-import { webhookRoutes } from "./routes/webhooks.js";
-import {
-  InMemoryExecutionRepository,
-  InMemoryJobRepository,
-} from "./scheduler-repositories.js";
-import { createRuntimeSettingsStore } from "./runtime-settings.js";
 
 function resolveMetricPath(request: import("fastify").FastifyRequest): string {
   const routePath =
@@ -68,38 +44,6 @@ function resolveMetricPath(request: import("fastify").FastifyRequest): string {
       ? request.routeOptions.url
       : undefined;
   return routePath ?? request.url.split("?")[0] ?? request.url;
-}
-
-type RuntimeConnector = import("@senclaw/protocol").Connector;
-
-type QueueMessageLike = {
-  payload: unknown;
-  ack(): Promise<void> | void;
-  nack(requeue?: boolean): Promise<void> | void;
-};
-
-interface QueueDriverLike {
-  subscribe(
-    connector: RuntimeConnector,
-    onMessage: (message: QueueMessageLike) => Promise<void>,
-  ): Promise<{ close(): Promise<void> | void }>;
-}
-
-interface PollingFetcherLike {
-  fetch(
-    url: string,
-    init?: {
-      method?: string;
-      headers?: Record<string, string>;
-    },
-  ): Promise<{
-    ok: boolean;
-    status: number;
-    headers: {
-      get(name: string): string | null;
-    };
-    text(): Promise<string>;
-  }>;
 }
 
 export interface CreateServerOptions {
@@ -235,11 +179,6 @@ export async function createServer(options: CreateServerOptions = {}): Promise<{
   });
   const approvalQueue = options.approvalQueue ?? new ApprovalQueue();
   const permissions = loadGlobalPermissionsConfig();
-  const runtimeSettingsStore = createRuntimeSettingsStore(
-    options.runtimeSettingsPath ??
-      resolveLocalRuntimeFiles(process.cwd()).settingsFile,
-  );
-
   const requestSpans = new WeakMap<
     import("fastify").FastifyRequest,
     TracingSpan
@@ -379,250 +318,60 @@ export async function createServer(options: CreateServerOptions = {}): Promise<{
     },
   });
 
-  const checks: Record<string, HealthCheck> = {
-    gateway: { check: () => ({ status: "healthy" as const }) },
-  };
-
-  const storage = config.dbUrl ? createStorage(config.dbUrl) : undefined;
-  if (storage) {
-    checks.storage = storage.healthCheck;
-    app.addHook("onClose", async () => {
-      storage.close();
-    });
-  }
-
-  const apiKeyRepository = storage?.apiKeys ?? new InMemoryApiKeyRepository();
-  const auditLogRepository =
-    storage?.auditLogs ?? new InMemoryAuditLogRepository();
-  const apiKeyService = new ApiKeyService(apiKeyRepository);
-  const bootstrapAdminKey = await apiKeyService.ensureBootstrapAdminKey({
-    print: !process.env.VITEST,
-  });
-
-  await app.register(authPlugin, {
-    apiKeyService,
-    auditLogRepository,
+  const runtimeServices = createGatewayRuntimeServices({
+    app,
+    config,
     logger,
-    auditLogRetentionDays: config.auditLogRetentionDays,
-    rateLimits: {
-      admin: config.rateLimitAdmin,
-      user: config.rateLimitUser,
-      readonly: config.rateLimitReadonly,
-    },
+    toolRegistry,
+    runtimeSettingsPath:
+      options.runtimeSettingsPath ??
+      resolveLocalRuntimeFiles(process.cwd()).settingsFile,
   });
 
-  const agentService = new AgentService(
-    toolRegistry,
-    {
-      maxTurns: config.maxTurns,
-      llmTimeoutMs: config.llmTimeoutMs,
-    },
-    storage?.agents ?? new InMemoryAgentRepository(),
-    storage?.runs ?? new InMemoryRunRepository(),
-    storage?.messages ?? new InMemoryMessageRepository(),
-  );
+  const { bootstrapAdminKey } = await registerGatewayAuth({
+    app,
+    config,
+    logger,
+    apiKeyService: runtimeServices.apiKeyService,
+    auditLogRepository: runtimeServices.auditLogRepository,
+  });
 
-  const schedulerService = new SchedulerService(
-    agentService,
-    storage?.jobs ?? new InMemoryJobRepository(),
-    storage?.executions ?? new InMemoryExecutionRepository(),
-    {
-      tickIntervalMs: config.schedulerTickIntervalMs,
-      logger: createChildLogger(logger, { component: "scheduler" }),
-    },
-  );
-
-  const connectorRepo = storage?.connectors ?? {
-    create: async () => ({
-      id: "",
-      name: "",
-      type: "webhook" as const,
-      agentId: "",
-      config: { type: "webhook" as const, secret: "" },
-      transformation: {},
-      enabled: true,
-      createdAt: "",
-      updatedAt: "",
-    }),
-    get: async () => undefined,
-    list: async () => [],
-    update: async () => undefined,
-    delete: async () => false,
-    updateLastEventAt: async () => {},
-  };
-  const connectorEventRepo = storage?.connectorEvents ?? {
-    create: async () => ({
-      id: "",
-      connectorId: "",
-      payload: "",
-      status: "pending" as const,
-      receivedAt: "",
-    }),
-    get: async () => undefined,
-    listByConnectorId: async () => [],
-    update: async () => {},
-  };
-
-  // Connector worker setup - use dynamic import to avoid build-time dependency
-  let eventProcessor: {
-    processEvent(connector: RuntimeConnector, payload: unknown): Promise<void>;
-  } | null;
-  let webhookConnector: {
-    validateWebhook(
-      connector: RuntimeConnector,
-      signature?: string,
-      rawBody?: string,
-    ): void;
-    handleWebhook(
-      connector: RuntimeConnector,
-      payload: unknown,
-      signature?: string,
-      rawBody?: string,
-    ): Promise<void>;
-  } | null;
-  let queueConnector: {
-    start(connector: RuntimeConnector): Promise<unknown>;
-    stop(connectorId?: string): Promise<void>;
-  } | null;
-  let pollingConnector: {
-    start(connector: RuntimeConnector): void;
-    stop(connectorId?: string): void;
-  } | null;
-
-  try {
-    const connectorWorkerModule = "@senclaw/connector-worker";
-    const connectorWorker = await import(connectorWorkerModule);
-    eventProcessor = new connectorWorker.EventProcessor(
-      agentService,
-      connectorEventRepo,
-    );
-    webhookConnector = new connectorWorker.WebhookConnector(eventProcessor);
-    const queueDriver =
-      options.queueDriver ?? new connectorWorker.BrokerQueueDriver();
-    queueConnector = new connectorWorker.QueueConnector(
-      eventProcessor,
-      queueDriver,
-    );
-    pollingConnector = new connectorWorker.PollingConnector(
-      eventProcessor,
-      options.pollingFetcher,
-    );
-  } catch (error) {
-    logger.warn(
-      { error },
-      "Connector worker not available, connector features disabled",
-    );
-    eventProcessor = null;
-    webhookConnector = null;
-    queueConnector = null;
-    pollingConnector = null;
-  }
-
-  const activeEventProcessor: NonNullable<typeof eventProcessor> =
-    eventProcessor ?? {
-      processEvent: async () => undefined,
-    };
-
-  const connectorLifecycle: ConnectorLifecycle = {
-    sync: async (connector) => {
-      await queueConnector?.stop(connector.id);
-      pollingConnector?.stop(connector.id);
-
-      if (!connector.enabled) {
-        return;
-      }
-
-      if (connector.type === "queue") {
-        await queueConnector?.start(connector);
-        return;
-      }
-
-      if (connector.type === "polling") {
-        pollingConnector?.start(connector);
-      }
-    },
-    stop: async (connectorId) => {
-      await queueConnector?.stop(connectorId);
-      pollingConnector?.stop(connectorId);
-    },
-  };
-
-  for (const connector of await connectorRepo.list({ enabled: true })) {
-    try {
-      await connectorLifecycle.sync(connector);
-    } catch (error) {
-      logger.error(
-        {
-          error,
-          connectorId: connector.id,
-          connectorType: connector.type,
-        },
-        "Failed to initialize connector lifecycle",
-      );
-    }
-  }
+  const connectorRuntime = await createConnectorRuntime({
+    agentService: runtimeServices.agentService,
+    connectorRepo: runtimeServices.connectorRepo,
+    connectorEventRepo: runtimeServices.connectorEventRepo,
+    logger,
+    queueDriver: options.queueDriver,
+    pollingFetcher: options.pollingFetcher,
+  });
 
   app.addHook("onClose", async () => {
-    await queueConnector?.stop();
-    pollingConnector?.stop();
+    await connectorRuntime.close();
   });
 
-  await app.register(agentRoutes, {
-    prefix: "/api/v1/agents",
-    agentService,
-  });
-
-  await app.register(taskRoutes, {
-    prefix: "/api/v1/tasks",
-    agentService,
-  });
-
-  await app.register(runRoutes, {
-    prefix: "/api/v1/runs",
-    agentService,
-  });
-
-  await app.register(jobRoutes, {
-    prefix: "/api/v1/jobs",
-    schedulerService,
-  });
-
-  await app.register(connectorRoutes, {
-    prefix: "/api/v1/connectors",
-    connectorRepo,
-    eventRepo: connectorEventRepo,
-    eventProcessor: activeEventProcessor,
-    connectorLifecycle,
-  });
-
-  await app.register(webhookRoutes, {
-    prefix: "/webhooks",
-    connectorRepo,
-    webhookConnector,
-  });
-
-  await app.register(runtimeSettingsRoutes, {
-    prefix: "/api/runtime/settings",
-    store: runtimeSettingsStore,
-  });
-
-  await app.register(approvalRoutes, {
-    prefix: "/api/runtime/approvals",
+  await registerGatewayRoutes({
+    app,
+    agentService: runtimeServices.agentService,
+    schedulerService: runtimeServices.schedulerService,
+    connectorRepo: runtimeServices.connectorRepo,
+    connectorEventRepo: runtimeServices.connectorEventRepo,
+    eventProcessor: connectorRuntime.eventProcessor,
+    webhookConnector: connectorRuntime.webhookConnector,
+    connectorLifecycle: connectorRuntime.connectorLifecycle,
+    runtimeSettingsStore: runtimeServices.runtimeSettingsStore,
     approvalQueue,
+    apiKeyService: runtimeServices.apiKeyService,
+    auditLogRepository: runtimeServices.auditLogRepository,
+    checks: runtimeServices.checks,
   });
 
-  await app.register(keyRoutes, {
-    prefix: "/api/v1/keys",
-    apiKeyService,
-    auditLogRepository,
-  });
-
-  await app.register(healthRoutes, {
-    prefix: "/health",
-    checks,
-  });
-
-  return { app, config, logger, bootstrapAdminKey, apiKeyService };
+  return {
+    app,
+    config,
+    logger,
+    bootstrapAdminKey,
+    apiKeyService: runtimeServices.apiKeyService,
+  };
 }
 
 export async function startServer() {

@@ -1,4 +1,4 @@
-﻿import React from "react";
+import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it } from "vitest";
@@ -25,6 +25,15 @@ describe("SubmittedRunPanel", () => {
             {
               role: "assistant",
               content: "Listing files now.",
+              toolCalls: [
+                {
+                  toolCallId: "call-1",
+                  toolName: "fs.read_dir",
+                  args: {
+                    path: "D:\\senclaw",
+                  },
+                },
+              ],
             },
           ],
           isLoading: false,
@@ -37,6 +46,8 @@ describe("SubmittedRunPanel", () => {
     expect(html).toContain(copy.taskSubmit.latestRunTitle);
     expect(html).toContain("running");
     expect(html).toContain("Listing files now.");
+    expect(html).toContain("fs.read_dir");
+    expect(html).toContain("path");
     expect(html).toContain(copy.taskSubmit.viewRunDetails);
     expect(html).toContain("/runs/run-1");
   });

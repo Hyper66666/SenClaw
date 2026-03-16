@@ -1,4 +1,4 @@
-﻿export interface CreateApiClientOptions {
+export interface CreateApiClientOptions {
   baseUrl?: string;
   apiKey?: string;
   getApiKey?: () => string | undefined;

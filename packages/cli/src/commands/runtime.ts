@@ -18,6 +18,8 @@ function registerRuntimeAction(program: Command, action: RuntimeAction): void {
     .option("-w, --workspace <path>", "Path to the SenClaw workspace root")
     .action((options: { workspace?: string }) => {
       try {
+        // Runtime commands orchestrate local processes instead of calling the
+        // gateway API, so they keep explicit local error translation.
         const workspaceRoot = resolveSenclawWorkspaceRoot(options.workspace);
         const spec = createRuntimeCommandSpec(action, workspaceRoot);
         const result = spawnSync(spec.command, spec.args, {

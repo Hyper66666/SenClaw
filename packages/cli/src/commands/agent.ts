@@ -2,7 +2,8 @@ import type { Command } from "commander";
 import chalk from "chalk";
 import inquirer from "inquirer";
 import Table from "cli-table3";
-import { APIClient, handleAPIError } from "../lib/api.js";
+import { APIClient } from "../lib/api.js";
+import { withCLIErrorHandling } from "../lib/command-wrapper.js";
 
 export function agentCommand(program: Command) {
   const agent = program.command("agent").description("Manage agents");
@@ -10,8 +11,8 @@ export function agentCommand(program: Command) {
   agent
     .command("create")
     .description("Create a new agent")
-    .action(async () => {
-      try {
+    .action(
+      withCLIErrorHandling(async () => {
         const answers = await inquirer.prompt([
           {
             type: "input",
@@ -68,16 +69,14 @@ export function agentCommand(program: Command) {
 
         console.log(chalk.green("Agent created successfully"));
         console.log(chalk.gray(`ID: ${createdAgent.id}`));
-      } catch (error) {
-        handleAPIError(error);
-      }
-    });
+      }),
+    );
 
   agent
     .command("list")
     .description("List all agents")
-    .action(async () => {
-      try {
+    .action(
+      withCLIErrorHandling(async () => {
         const client = new APIClient();
         const agents = await client.listAgents();
 
@@ -102,16 +101,14 @@ export function agentCommand(program: Command) {
         }
 
         console.log(table.toString());
-      } catch (error) {
-        handleAPIError(error);
-      }
-    });
+      }),
+    );
 
   agent
     .command("get <id>")
     .description("Get agent details")
-    .action(async (id: string) => {
-      try {
+    .action(
+      withCLIErrorHandling(async (id: string) => {
         const client = new APIClient();
         const fetchedAgent = await client.getAgent(id);
 
@@ -134,16 +131,14 @@ export function agentCommand(program: Command) {
         );
         console.log(`\n${chalk.bold("System Prompt:")}`);
         console.log(fetchedAgent.systemPrompt);
-      } catch (error) {
-        handleAPIError(error);
-      }
-    });
+      }),
+    );
 
   agent
     .command("delete <id>")
     .description("Delete an agent")
-    .action(async (id: string) => {
-      try {
+    .action(
+      withCLIErrorHandling(async (id: string) => {
         const { confirm } = await inquirer.prompt([
           {
             type: "confirm",
@@ -161,8 +156,6 @@ export function agentCommand(program: Command) {
         const client = new APIClient();
         await client.deleteAgent(id);
         console.log(chalk.green("Agent deleted successfully"));
-      } catch (error) {
-        handleAPIError(error);
-      }
-    });
+      }),
+    );
 }

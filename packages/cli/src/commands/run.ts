@@ -1,9 +1,14 @@
 import type { Command } from "commander";
 import chalk from "chalk";
 import ora from "ora";
-import { APIClient, handleAPIError, type Message } from "../lib/api.js";
+import { APIClient, type Message } from "../lib/api.js";
+import { withCLIErrorHandling } from "../lib/command-wrapper.js";
 
-function formatMessage(message: Message, index: number): string {
+function formatToolCallArgs(args: Record<string, unknown>): string {
+  return JSON.stringify(args, null, 2);
+}
+
+export function formatRunMessage(message: Message, index: number): string {
   const roleColors = {
     system: chalk.gray,
     user: chalk.blue,
@@ -18,10 +23,10 @@ function formatMessage(message: Message, index: number): string {
     output += `${message.content}\n`;
   }
 
-  if (message.toolCalls && message.toolCalls.length > 0) {
+  if (message.role === "assistant" && message.toolCalls?.length) {
     for (const call of message.toolCalls) {
-      output += chalk.dim(`\nTool Call: ${call.name}\n`);
-      output += chalk.dim(`Arguments: ${call.arguments}\n`);
+      output += chalk.dim(`\nTool Call: ${call.toolName}\n`);
+      output += chalk.dim(`Arguments: ${formatToolCallArgs(call.args)}\n`);
     }
   }
 
@@ -34,8 +39,8 @@ export function runCommand(program: Command) {
   run
     .command("get <run-id>")
     .description("Get run status")
-    .action(async (runId: string) => {
-      try {
+    .action(
+      withCLIErrorHandling(async (runId: string) => {
         const client = new APIClient();
         const fetchedRun = await client.getRun(runId);
 
@@ -57,78 +62,76 @@ export function runCommand(program: Command) {
 
         console.log(`\n${chalk.bold("Input:")}`);
         console.log(fetchedRun.input);
-      } catch (error) {
-        handleAPIError(error);
-      }
-    });
+      }),
+    );
 
   run
     .command("logs <run-id>")
     .description("Display run message history")
     .option("-f, --follow", "Follow log output (poll for updates)")
-    .action(async (runId: string, options: { follow?: boolean }) => {
-      try {
-        const client = new APIClient();
+    .action(
+      withCLIErrorHandling(
+        async (runId: string, options: { follow?: boolean }) => {
+          const client = new APIClient();
 
-        if (options.follow) {
-          console.log(chalk.dim("Following logs (Ctrl+C to stop)...\n"));
+          if (options.follow) {
+            console.log(chalk.dim("Following logs (Ctrl+C to stop)...\n"));
 
-          let lastMessageCount = 0;
-          const poll = async () => {
-            try {
-              const fetchedRun = await client.getRun(runId);
-              const messages = await client.getRunMessages(runId);
+            let lastMessageCount = 0;
+            const poll = async () => {
+              try {
+                const fetchedRun = await client.getRun(runId);
+                const messages = await client.getRunMessages(runId);
 
-              if (messages.length > lastMessageCount) {
-                for (let i = lastMessageCount; i < messages.length; i += 1) {
-                  console.log(formatMessage(messages[i], i));
+                if (messages.length > lastMessageCount) {
+                  for (let i = lastMessageCount; i < messages.length; i += 1) {
+                    console.log(formatRunMessage(messages[i], i));
+                  }
+                  lastMessageCount = messages.length;
                 }
-                lastMessageCount = messages.length;
+
+                if (
+                  fetchedRun.status === "completed" ||
+                  fetchedRun.status === "failed"
+                ) {
+                  console.log(
+                    chalk.dim(`\nRun ${fetchedRun.status}. Stopped following.`),
+                  );
+                  process.exit(0);
+                }
+              } catch {
+                // Ignore transient polling failures while following a run.
               }
+            };
 
-              if (
-                fetchedRun.status === "completed" ||
-                fetchedRun.status === "failed"
-              ) {
-                console.log(
-                  chalk.dim(`\nRun ${fetchedRun.status}. Stopped following.`),
-                );
-                process.exit(0);
-              }
-            } catch {
-              // Ignore transient polling failures while following a run.
-            }
-          };
+            await poll();
 
-          await poll();
+            const interval = setInterval(poll, 2000);
 
-          const interval = setInterval(poll, 2000);
+            process.on("SIGINT", () => {
+              clearInterval(interval);
+              console.log(chalk.dim("\nStopped following logs"));
+              process.exit(0);
+            });
+            return;
+          }
 
-          process.on("SIGINT", () => {
-            clearInterval(interval);
-            console.log(chalk.dim("\nStopped following logs"));
-            process.exit(0);
-          });
-          return;
-        }
+          const spinner = ora("Fetching messages...").start();
+          const messages = await client.getRunMessages(runId);
+          spinner.stop();
 
-        const spinner = ora("Fetching messages...").start();
-        const messages = await client.getRunMessages(runId);
-        spinner.stop();
+          if (messages.length === 0) {
+            console.log(chalk.yellow("No messages yet"));
+            return;
+          }
 
-        if (messages.length === 0) {
-          console.log(chalk.yellow("No messages yet"));
-          return;
-        }
+          console.log(chalk.bold("Message History:"));
+          console.log(chalk.gray("-".repeat(50)));
 
-        console.log(chalk.bold("Message History:"));
-        console.log(chalk.gray("-".repeat(50)));
-
-        for (let i = 0; i < messages.length; i += 1) {
-          console.log(formatMessage(messages[i], i));
-        }
-      } catch (error) {
-        handleAPIError(error);
-      }
-    });
+          for (let i = 0; i < messages.length; i += 1) {
+            console.log(formatRunMessage(messages[i], i));
+          }
+        },
+      ),
+    );
 }

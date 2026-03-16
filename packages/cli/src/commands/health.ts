@@ -1,14 +1,15 @@
 import type { Command } from "commander";
 import chalk from "chalk";
 import ora from "ora";
-import { APIClient, handleAPIError } from "../lib/api.js";
+import { APIClient } from "../lib/api.js";
+import { withCLIErrorHandling } from "../lib/command-wrapper.js";
 
 export function healthCommand(program: Command) {
   program
     .command("health")
     .description("Check system health status")
-    .action(async () => {
-      try {
+    .action(
+      withCLIErrorHandling(async () => {
         const spinner = ora("Checking health...").start();
         const client = new APIClient();
         const health = await client.getHealth();
@@ -54,8 +55,6 @@ export function healthCommand(program: Command) {
         }
 
         console.log();
-      } catch (error) {
-        handleAPIError(error);
-      }
-    });
+      }),
+    );
 }

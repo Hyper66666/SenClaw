@@ -1,4 +1,4 @@
-﻿import { useConsoleLocale } from "@/components/LocaleProvider";
+import { useConsoleLocale } from "@/components/LocaleProvider";
 import {
   Badge,
   Card,
@@ -13,33 +13,28 @@ import {
   useRunMessages,
   useSubmitTask,
 } from "@/hooks/useAPI";
-import type { Message, Run } from "@/lib/api";
 import { describeConsoleError } from "@/lib/auth-session";
+import type { Message, Run } from "@/lib/api";
 import type { ConsoleCopy } from "@/lib/locale";
+import { getRunStatusVariant } from "@/lib/status";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
-function getStatusVariant(
-  status: string,
-): "default" | "success" | "warning" | "danger" {
-  switch (status) {
-    case "completed":
-      return "success";
-    case "running":
-      return "warning";
-    case "failed":
-      return "danger";
-    default:
-      return "default";
-  }
+function formatToolCallArgs(args: Record<string, unknown>): string {
+  return JSON.stringify(args, null, 2);
 }
 
 function createMessageKey(message: Message, index: number): string {
+  const toolCallIds =
+    message.role === "assistant"
+      ? (message.toolCalls?.map((call) => call.toolCallId).join(",") ?? "")
+      : "";
+
   return [
     message.role,
-    message.toolCallId ?? "",
+    "toolCallId" in message ? (message.toolCallId ?? "") : "",
     message.content ?? "",
-    message.toolCalls?.map((call) => call.id).join(",") ?? "",
+    toolCallIds,
     index,
   ].join("|");
 }
@@ -91,7 +86,7 @@ export function SubmittedRunPanel({
           <span className="text-sm font-medium text-muted-foreground">
             {copy.latestRunStatus}
           </span>
-          <Badge variant={getStatusVariant(run.status)}>{run.status}</Badge>
+          <Badge variant={getRunStatusVariant(run.status)}>{run.status}</Badge>
         </div>
 
         {run.error ? (
@@ -119,16 +114,18 @@ export function SubmittedRunPanel({
                       {message.content}
                     </p>
                   ) : null}
-                  {message.toolCalls && message.toolCalls.length > 0 ? (
+                  {message.role === "assistant" &&
+                  message.toolCalls &&
+                  message.toolCalls.length > 0 ? (
                     <div className="mt-2 space-y-2">
                       {message.toolCalls.map((call) => (
                         <div
-                          key={call.id}
+                          key={call.toolCallId}
                           className="rounded bg-muted p-2 font-mono text-xs"
                         >
-                          <div className="font-semibold">{call.name}</div>
+                          <div className="font-semibold">{call.toolName}</div>
                           <pre className="mt-1 whitespace-pre-wrap">
-                            {call.arguments}
+                            {formatToolCallArgs(call.args)}
                           </pre>
                         </div>
                       ))}
@@ -144,6 +141,8 @@ export function SubmittedRunPanel({
   );
 }
 
+// Task submission keeps its explicit state flow because it combines initial
+// agent loading, mutation failures, and live run polling in a single screen.
 export function TaskSubmit() {
   const { copy, locale } = useConsoleLocale();
   const navigate = useNavigate();

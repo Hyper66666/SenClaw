@@ -1,39 +1,6 @@
+import type { Agent, CreateAgent, Message, Run } from "@senclaw/protocol";
 import axios, { type AxiosError, type AxiosInstance } from "axios";
 import { loadConfig } from "./config.js";
-
-export interface Agent {
-  id: string;
-  name: string;
-  systemPrompt: string;
-  provider: {
-    provider: string;
-    model: string;
-    temperature?: number;
-    maxTokens?: number;
-  };
-  tools: string[];
-}
-
-export interface Run {
-  id: string;
-  agentId: string;
-  input: string;
-  status: "pending" | "running" | "completed" | "failed";
-  createdAt: string;
-  updatedAt: string;
-  error?: string;
-}
-
-export interface Message {
-  role: "system" | "user" | "assistant" | "tool";
-  content?: string;
-  toolCalls?: Array<{
-    id: string;
-    name: string;
-    arguments: string;
-  }>;
-  toolCallId?: string;
-}
 
 export interface HealthStatus {
   status: "healthy" | "degraded" | "unhealthy";
@@ -45,6 +12,8 @@ export interface HealthStatus {
     }
   >;
 }
+
+export type { Agent, CreateAgent, Message, Run };
 
 export class APIClient {
   private client: AxiosInstance;
@@ -71,7 +40,7 @@ export class APIClient {
     return response.data;
   }
 
-  async createAgent(data: Omit<Agent, "id">): Promise<Agent> {
+  async createAgent(data: CreateAgent): Promise<Agent> {
     const response = await this.client.post("/api/v1/agents", data);
     return response.data;
   }
@@ -113,11 +82,20 @@ export function handleAPIError(error: unknown): never {
 
     if (axiosError.response) {
       const data = axiosError.response.data;
-      throw new Error(
+      const message =
         data?.message ||
-          data?.error ||
-          `API error: ${axiosError.response.status}`,
-      );
+        data?.error ||
+        `API error: ${axiosError.response.status}`;
+
+      if (axiosError.response.status === 401) {
+        throw new Error(`Authentication failed: ${message}`);
+      }
+
+      if (axiosError.response.status === 403) {
+        throw new Error(`Not enough permissions: ${message}`);
+      }
+
+      throw new Error(message);
     }
 
     if (axiosError.request) {

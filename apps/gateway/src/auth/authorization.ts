@@ -17,7 +17,7 @@ export function requireRoles(
     }
 
     if (!allowedRoles.includes(request.apiKey.role)) {
-      reply.status(403).send({
+      return reply.status(403).send({
         error: "FORBIDDEN",
         message: `Insufficient permissions. Required role: ${allowedRoles.join(
           " or ",

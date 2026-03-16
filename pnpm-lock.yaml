@@ -140,6 +140,9 @@ importers:
       '@radix-ui/react-slot':
         specifier: ^1.0.2
         version: 1.2.4(@types/react@18.3.28)(react@18.3.1)
+      '@senclaw/protocol':
+        specifier: workspace:^
+        version: link:../../packages/protocol
       '@tanstack/react-query':
         specifier: ^5.17.0
         version: 5.90.21(react@18.3.1)
@@ -186,6 +189,9 @@ importers:
 
   packages/cli:
     dependencies:
+      '@senclaw/protocol':
+        specifier: workspace:^
+        version: link:../protocol
       axios:
         specifier: ^1.6.2
         version: 1.13.6
