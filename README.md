@@ -4,15 +4,15 @@
 
 Senclaw is an AI agent orchestration platform with persistent storage, API-key authentication, a web console, connector ingestion, scheduling, and sandboxed tool execution.
 
-The codebase is feature-rich and the repository gate is now green locally. As of March 12, 2026, the latest local Windows verification shows `build`, `test`, `test:integration`, and `verify` all passing. RabbitMQ and Redis Streams queue drivers are now implemented in-tree with unit coverage and default gateway wiring, but live-broker release evidence is still pending. A real OpenAI-compatible smoke run is also recorded, so the remaining baseline go-live work is narrowed to a supported-runtime rerun on Node 22 and protected web-console acceptance.
+The codebase is feature-rich and the repository gate is now green locally. As of March 16, 2026, the Windows baseline go-live gate has been closed with recorded Node 22 verification and browser-level protected web-console acceptance. RabbitMQ and Redis Streams queue drivers are implemented in-tree with unit coverage and default gateway wiring, but live-broker release evidence is still pending.
 
 ## Readiness Snapshot
 
-Latest local evidence on March 12, 2026 (Windows, Node `v20.11.0` with engine warning):
+Latest local evidence on March 16, 2026 (Windows baseline recorded on portable Node `v22.22.1`):
 
 - `pnpm run build`: pass
-- `pnpm run test`: pass (`36` test files, `225` tests)
-- `pnpm run test:integration`: pass (`6` test files, `20` tests)
+- `pnpm run test`: pass (`46` test files, `267` tests)
+- `pnpm run test:integration`: pass (`6` test files, `20` tests) plus an opt-in live-broker suite (`1` file, `4` skipped without broker env)
 - `pnpm run verify`: pass
 
 Supported development platforms:
@@ -51,7 +51,7 @@ Packages:
 - SQLite-compatible filesystem access for `SENCLAW_DB_URL`
 - Optional: Rust toolchain for native sandbox validation (`native/sandbox-runner`)
 
-This machine currently uses Node `v20.11.0`, so commands succeed with engine warnings. Use Node 22+ for supported local and CI verification.
+This machine still uses Node `v20.11.0` as the default local install, so commands succeed with engine warnings unless a Node 22 runtime is selected. The supported-runtime gate has now been revalidated locally with portable Node `v22.22.1`.
 
 ## Quick Start
 
@@ -172,7 +172,7 @@ corepack pnpm run test:integration
 corepack pnpm run verify
 ```
 
-Current release claims must be based on all four commands. The remaining baseline sign-off work is a rerun on Node 22 plus protected web-console acceptance evidence.
+Current release claims must be based on all four commands. The Windows baseline sign-off is now recorded; the remaining release work is limited to optional broker-backed queue validation and Linux native sandbox validation.
 
 ## Key Docs
 
@@ -186,10 +186,8 @@ Current release claims must be based on all four commands. The remaining baselin
 
 These areas remain between "locally green" and a final deployment-ready claim:
 
-- rerun the readiness matrix on supported Node 22
-- record protected web-console acceptance against an authenticated gateway
 - record live-broker RabbitMQ and Redis validation before claiming broker-backed queue support as release-ready
-- record evidence-backed Rust sandbox validation on both Windows and Linux if level 4 native enforcement will be claimed
+- record evidence-backed Rust sandbox validation on Linux if level 4 native enforcement will be claimed across both supported platforms
 
 ## Repository URL
 

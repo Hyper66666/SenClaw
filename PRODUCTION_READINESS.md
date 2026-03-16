@@ -4,7 +4,7 @@ This document records the current release-readiness truth for Senclaw. It is int
 
 ## Go-Live Status Summary
 
-As of March 14, 2026, Senclaw is locally green on Windows and can be used for internal or controlled deployment trials. The baseline go-live gate is close, but it is not fully closed yet.
+As of March 16, 2026, Senclaw is locally green on Windows and can be used for internal or controlled deployment trials. The Windows baseline go-live gate is now closed; remaining work is limited to optional production extensions such as live-broker queue validation and Linux native sandbox validation.
 
 Baseline evidence already recorded:
 
@@ -12,12 +12,12 @@ Baseline evidence already recorded:
 - `pnpm run test`: pass (`46` test files, `267` tests)
 - `pnpm run test:integration`: pass (`6` test files, `20` tests) plus an opt-in live-broker suite (`1` file, `4` skipped without broker env)
 - `pnpm run verify`: pass
+- supported-runtime rerun: pass on March 16, 2026 on Windows using portable Node `v22.22.1`; `build`, `test`, `test:integration`, and `verify` all passed
 - real OpenAI-compatible smoke validation: pass on March 12, 2026 against the Volcengine Ark OpenAI-compatible endpoint using model `doubao-seed-2.0-pro`; the smoke prompt returned `OK`
 
 Baseline blockers still open:
 
-- rerun the readiness matrix on the supported runtime, Node.js `>=22.0.0`
-- record protected web-console acceptance against an authentication-enabled gateway
+- none on the recorded Windows baseline
 
 Optional production extensions that are currently NOT claimed:
 
@@ -27,7 +27,7 @@ Optional production extensions that are currently NOT claimed:
 
 ## Evidence Baseline
 
-Latest local Windows verification on March 14, 2026 (Node `v20.11.0`, with engine warning because the repository requires Node 22+):
+Latest supported-runtime local Windows verification on March 16, 2026 (portable Node `v22.22.1`, pnpm `10.0.0`):
 
 - `pnpm run build`: pass
 - `pnpm run test`: pass (`46` test files, `267` tests)
@@ -50,8 +50,7 @@ Authoritative deployment gate:
 
 Current baseline blockers:
 
-- the readiness matrix still needs to be rerun on supported Node 22
-- protected web-console acceptance against an authenticated gateway has not yet been recorded
+- none on the recorded Windows baseline
 
 Conditional blockers:
 
@@ -76,13 +75,12 @@ Implemented and locally verified:
 
 Implemented but not fully release-closed:
 
-- protected web-console acceptance still needs a recorded run against a protected gateway
+- protected web-console acceptance was recorded on March 16, 2026 through an Edge Playwright acceptance run captured in `.tmp/web-acceptance/web-auth-acceptance.json`
 - Rust sandbox level 4 integration exists, with local Windows build evidence recorded; Linux build validation is still pending
 - broker-backed queue drivers exist with unit coverage and runtime wiring, but live-broker validation is not yet recorded
 
 Not release-ready to claim today:
 
-- baseline deployment readiness on the officially supported runtime, until Node 22 evidence is recorded
 - production RabbitMQ/Redis queue-driver support
 - complete binary-backed Rust sandbox support on both supported platforms
 
@@ -122,7 +120,7 @@ Evidence:
 
 Remaining blocker:
 
-- supported-runtime rerun on Node 22
+- none on the recorded Windows baseline; optional broker and Linux native sandbox evidence remain outside this subsystem
 
 ### Persistent Storage
 
@@ -135,7 +133,7 @@ Evidence:
 
 Remaining blocker:
 
-- supported-runtime rerun on Node 22 as part of the final baseline evidence
+- none on the recorded Windows baseline; optional broker and Linux native sandbox evidence remain outside this subsystem
 
 ### API Authentication
 
@@ -158,7 +156,7 @@ Evidence:
 
 Remaining blocker:
 
-- supported-runtime rerun on Node 22 as part of the final baseline evidence
+- none on the recorded Windows baseline; optional broker and Linux native sandbox evidence remain outside this subsystem
 
 ### Web Console
 
@@ -175,10 +173,9 @@ Evidence:
 - on March 14, 2026, authenticated requests through the local web proxy returned the expected statuses: list agents `200`, create agent `201`, submit task `201`, inspect run `200`, and delete agent `204`
 - on March 14, 2026, a real-provider run created from the local runtime completed successfully and produced an assistant reply
 
-Remaining blockers:
+Recorded recovery evidence:
 
-- browser-level UI recovery evidence for missing, invalid, and revoked tokens is still pending because local Playwright Chrome launch exits with code 13 on this workstation
-- supported-runtime rerun on Node 22 as part of the final baseline evidence
+- browser-level UI recovery evidence for missing, invalid, and revoked tokens was recorded on March 16, 2026 using Python Playwright with the system Edge channel; missing-token, invalid-token, and revoked-token scenarios all recovered after a valid key was saved
 
 ### CLI Tool
 
@@ -195,7 +192,6 @@ Remaining blockers:
 
 - release packaging and npm publication workflow
 - broader CLI-specific test coverage and docs alignment
-- supported-runtime rerun on Node 22 as part of the final baseline evidence
 
 ### Connector Worker
 
@@ -230,7 +226,7 @@ Evidence:
 
 Remaining blocker:
 
-- supported-runtime rerun on Node 22 as part of the final baseline evidence
+- none on the recorded Windows baseline; optional broker and Linux native sandbox evidence remain outside this subsystem
 
 ### Tool Sandbox
 
@@ -265,23 +261,19 @@ Required runtime versions:
 
 Use Senclaw today when all of the following are acceptable:
 
-- you are operating on a locally verified build and understand the final supported-runtime rerun is still pending
+- you are operating on a locally verified build whose Windows baseline gate has been closed
 - your connector needs are satisfied by webhooks or polling, or you are comfortable using the built-in broker drivers before live-broker release evidence is recorded
 - your sandbox threat model is covered by the current TypeScript isolation path rather than requiring fully validated native level 4 enforcement
 
-Do not claim full deployment readiness until:
+Do not claim the remaining optional production extensions until:
 
-1. the readiness matrix is rerun on Node 22
-2. protected web-console acceptance is recorded
-3. queue-driver support is explicit about what brokers are bundled and verified when broker-backed support is claimed
-4. Rust sandbox validation has been recorded on both Windows and Linux when native level 4 support is claimed
+1. queue-driver support is explicit about what brokers are bundled and verified when broker-backed support is claimed
+2. Rust sandbox validation has been recorded on both Windows and Linux when native level 4 support is claimed
 
 ## Next Priority Work
 
-1. Re-run the green repository gate on Node 22 and record the evidence.
-2. Record browser-level protected web-console recovery evidence for missing, invalid, and revoked tokens once the local Playwright/Chrome blocker is removed or a manual operator pass is completed.
-3. Record RabbitMQ and Redis live-broker validation if broker-backed support is required.
-4. Record dedicated Linux native sandbox build validation if level 4 native sandbox claims are required.
+1. Record RabbitMQ and Redis live-broker validation if broker-backed support is required.
+2. Record dedicated Linux native sandbox build validation if level 4 native sandbox claims are required.
 
 
 

@@ -2,9 +2,9 @@
 
 - [x] 1.1 Normalize the minimum deployment gate in docs: Node.js `>=22.0.0`, `pnpm run build`, `pnpm run test`, `pnpm run test:integration`, and `pnpm run verify`.
 - [x] 1.2 Clean up the current repository-wide `verify` blockers until the full command passes on the supported toolchain.
-- [ ] 1.3 Re-run the readiness matrix on Node 22 and record the evidence in `PRODUCTION_READINESS.md`.
+- [x] 1.3 Re-run the readiness matrix on Node 22 and record the evidence in `PRODUCTION_READINESS.md`.
 
-Note: the current workstation still runs Node `v20.11.0`, so the supported-runtime rerun remains open even though the local Windows gate is green.
+Note: on March 16, 2026, the supported-runtime matrix was rerun successfully on Windows using a portable Node `v22.22.1` runtime. The local default Node install is still `v20.11.0`, but supported-runtime evidence is now recorded.
 
 ## 2. Real Provider Smoke Validation
 
@@ -18,9 +18,9 @@ Evidence: on March 12, 2026, `corepack pnpm run test:provider-smoke` succeeded a
 
 - [x] 3.1 Write a short acceptance checklist for the web console against an authentication-enabled gateway.
 - [x] 3.2 Verify with a valid bearer token that the operator can list agents, create an agent, submit a task, inspect a run, and complete a `204` delete flow.
-- [ ] 3.3 Verify that missing, invalid, and revoked tokens produce recoverable UI behavior and record the acceptance evidence.
+- [x] 3.3 Verify that missing, invalid, and revoked tokens produce recoverable UI behavior and record the acceptance evidence.
 
-Note: on March 14, 2026, authenticated operator flows were re-verified through the local web proxy (`http://localhost:3001/api/...`) and direct gateway API. Valid token flows returned `200/201/204`, a real-provider run reached `completed`, and invalid/revoked keys returned `401`. Browser-level UI recovery evidence is still pending because local Playwright Chrome launch exits with code 13 on this workstation.
+Note: on March 16, 2026, browser-level web-console recovery was recorded through a Python Playwright + Edge run at `.tmp/web-acceptance/web-auth-acceptance.json`. Missing-token, invalid-token, and revoked-token scenarios all showed recoverable UI behavior, and each scenario recovered successfully after saving a valid key.
 
 ## 4. Conditional Broker-Backed Queue Support
 
@@ -48,5 +48,5 @@ Note: `cargo build --release --manifest-path native/sandbox-runner/Cargo.toml` w
 - [x] 6.2 Decide whether the target deployment claims broker-backed queues and Rust level 4 readiness, and downgrade any unsupported claims.
 - [x] 6.3 Publish the final go-live status summary that distinguishes baseline deployment readiness from optional production extensions.
 
-Summary: baseline readiness now includes a green local repository gate and a recorded real-provider smoke run, but still requires a Node 22 rerun and protected web-console acceptance. Broker-backed queues and cross-platform Rust level 4 readiness remain optional and are not currently claimed.
+Summary: Windows baseline readiness now includes a green local repository gate, a recorded real-provider smoke run, a supported-runtime Node 22 rerun, and recorded protected web-console acceptance. Broker-backed queues and cross-platform Rust level 4 readiness remain optional and are not currently claimed.
 
