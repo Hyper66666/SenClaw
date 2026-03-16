@@ -1,3 +1,5 @@
+import { parseApiErrorPayload } from "@senclaw/protocol";
+
 export interface CreateApiClientOptions {
   baseUrl?: string;
   apiKey?: string;
@@ -68,6 +70,7 @@ async function readJsonPayload(response: Response): Promise<unknown> {
   try {
     return await response.json();
   } catch {
+    // Intentional-swallow: non-JSON API errors fall back to transport status text.
     return undefined;
   }
 }
@@ -107,26 +110,14 @@ export function createApiClient(options: CreateApiClientOptions = {}) {
 
       if (!response.ok) {
         const payload = await readJsonPayload(response);
-        const code =
-          payload &&
-          typeof payload === "object" &&
-          "error" in payload &&
-          typeof (payload as { error?: unknown }).error === "string"
-            ? (payload as { error: string }).error
-            : "UNKNOWN_ERROR";
-        const message =
-          payload &&
-          typeof payload === "object" &&
-          "message" in payload &&
-          typeof (payload as { message?: unknown }).message === "string"
-            ? (payload as { message: string }).message
-            : response.statusText;
-        const details =
-          payload && typeof payload === "object" && "details" in payload
-            ? (payload as { details?: unknown }).details
-            : undefined;
+        const parsedError = parseApiErrorPayload(payload, response.statusText);
 
-        throw new ApiResponseError(response.status, code, message, details);
+        throw new ApiResponseError(
+          response.status,
+          parsedError.code,
+          parsedError.message,
+          parsedError.details,
+        );
       }
 
       if (response.status === 204) {

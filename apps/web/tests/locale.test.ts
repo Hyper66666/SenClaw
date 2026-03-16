@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { EN_CONSOLE_COPY } from "../src/lib/locale-copy-en";
+import { ZH_CN_CONSOLE_COPY } from "../src/lib/locale-copy-zh-cn";
 import {
   CONSOLE_LOCALE_STORAGE_KEY,
   type LocaleStorageLike,
@@ -52,5 +54,10 @@ describe("console locale helpers", () => {
     expect(getConsoleCopy("zh-CN").agents.create).toBe(
       "\u521b\u5efa\u667a\u80fd\u4f53",
     );
+  });
+
+  it("maps each locale to its dedicated copy module", () => {
+    expect(getConsoleCopy("en")).toBe(EN_CONSOLE_COPY);
+    expect(getConsoleCopy("zh-CN")).toBe(ZH_CN_CONSOLE_COPY);
   });
 });

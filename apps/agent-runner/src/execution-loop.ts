@@ -1,4 +1,4 @@
-﻿import { performance } from "node:perf_hooks";
+import { performance } from "node:perf_hooks";
 import { createChildLogger, createLogger } from "@senclaw/logging";
 import {
   getMetricsRegistry,
@@ -49,6 +49,31 @@ export function formatToolResultForModel(result: ToolResult): string {
   return `Error: ${result.error ?? "Unknown error"}`;
 }
 
+function toErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+async function markRunFailed(
+  runId: string,
+  error: unknown,
+  runRepo: IRunRepository,
+  runLogger: typeof logger,
+): Promise<void> {
+  const errorMessage = toErrorMessage(error);
+
+  try {
+    await runRepo.updateStatus(runId, "failed", errorMessage);
+  } catch (statusError) {
+    runLogger.error(
+      {
+        error: statusError,
+        originalError: errorMessage,
+      },
+      "Failed to persist failed run status",
+    );
+  }
+}
+
 export async function executeRun(
   runId: string,
   agent: Agent,
@@ -93,10 +118,9 @@ export async function executeRun(
         try {
           model = resolveModel(agent.provider);
         } catch (error) {
-          const errMsg = error instanceof Error ? error.message : String(error);
           setSpanError(agentSpan, error);
           runLogger.error({ error }, "Failed to resolve model provider");
-          await runRepo.updateStatus(runId, "failed", errMsg);
+          await markRunFailed(runId, error, runRepo, runLogger);
           return;
         }
 
@@ -121,10 +145,11 @@ export async function executeRun(
           });
         }
 
+        const controller = new AbortController();
+        const totalTimeoutMs = options.llmTimeoutMs * options.maxTurns;
+        const timer = setTimeout(() => controller.abort(), totalTimeoutMs);
+
         try {
-          const controller = new AbortController();
-          const totalTimeoutMs = options.llmTimeoutMs * options.maxTurns;
-          const timer = setTimeout(() => controller.abort(), totalTimeoutMs);
           const llmLogger = createChildLogger(runLogger, {
             provider: agent.provider.provider,
             model: agent.provider.model,
@@ -172,8 +197,6 @@ export async function executeRun(
               return response;
             },
           );
-
-          clearTimeout(timer);
 
           if (result.steps) {
             for (const step of result.steps) {
@@ -255,7 +278,7 @@ export async function executeRun(
               { error: turnLimitError.message },
               "Agent execution hit the configured turn limit",
             );
-            await runRepo.updateStatus(runId, "failed", turnLimitError.message);
+            await markRunFailed(runId, turnLimitError, runRepo, runLogger);
           } else {
             await runRepo.updateStatus(runId, "completed");
             metricStatus = "success";
@@ -266,17 +289,17 @@ export async function executeRun(
             );
           }
         } catch (error) {
-          const errMsg = error instanceof Error ? error.message : String(error);
           setSpanError(agentSpan, error);
           runLogger.error({ error }, "Agent execution failed");
-          await runRepo.updateStatus(runId, "failed", errMsg);
+          await markRunFailed(runId, error, runRepo, runLogger);
+        } finally {
+          clearTimeout(timer);
         }
       },
     );
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
     runLogger.error({ error }, "Agent execution failed before span setup");
-    await runRepo.updateStatus(runId, "failed", errMsg);
+    await markRunFailed(runId, error, runRepo, runLogger);
   } finally {
     getMetricsRegistry().recordAgentExecution({
       agentId: agent.id,

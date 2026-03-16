@@ -102,3 +102,9 @@ export {
 export type { ToolDefinition, ToolSandboxConfig } from "./tool-definition.js";
 
 export { ToolResultSchema, type ToolResult } from "./tool-result.js";
+
+export {
+  formatOperatorErrorMessage,
+  parseApiErrorPayload,
+  type ParsedApiErrorPayload,
+} from "./api-error.js";

@@ -1,4 +1,11 @@
-import type { Agent, CreateAgent, Message, Run } from "@senclaw/protocol";
+import {
+  formatOperatorErrorMessage,
+  parseApiErrorPayload,
+  type Agent,
+  type CreateAgent,
+  type Message,
+  type Run,
+} from "@senclaw/protocol";
 import axios, { type AxiosError, type AxiosInstance } from "axios";
 import { loadConfig } from "./config.js";
 
@@ -75,27 +82,20 @@ export class APIClient {
 
 export function handleAPIError(error: unknown): never {
   if (axios.isAxiosError(error)) {
-    const axiosError = error as AxiosError<{
-      error?: string;
-      message?: string;
-    }>;
+    const axiosError = error as AxiosError<unknown>;
 
     if (axiosError.response) {
-      const data = axiosError.response.data;
-      const message =
-        data?.message ||
-        data?.error ||
-        `API error: ${axiosError.response.status}`;
+      const parsedError = parseApiErrorPayload(
+        axiosError.response.data,
+        `API error: ${axiosError.response.status}`,
+      );
 
-      if (axiosError.response.status === 401) {
-        throw new Error(`Authentication failed: ${message}`);
-      }
-
-      if (axiosError.response.status === 403) {
-        throw new Error(`Not enough permissions: ${message}`);
-      }
-
-      throw new Error(message);
+      throw new Error(
+        formatOperatorErrorMessage(
+          axiosError.response.status,
+          parsedError.message,
+        ),
+      );
     }
 
     if (axiosError.request) {
