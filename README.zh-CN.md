@@ -4,15 +4,15 @@
 
 Senclaw 是一个 AI Agent 编排平台，具备持久化存储、API Key 鉴权、Web Console、连接器接入、任务调度以及沙箱化工具执行能力。
 
-当前代码库功能已经比较完整，仓库门禁也已在本地恢复为绿色。截止 2026 年 3 月 12 日，最新一次 Windows 本地验证中，`build`、`test`、`test:integration` 和 `verify` 均已通过。RabbitMQ 与 Redis Streams 队列驱动已经在仓库内实现，并带有单元测试覆盖和默认 gateway 接线，但基于真实 broker 的发布级验证证据仍待补齐。与此同时，项目也已经记录了真实 OpenAI-compatible provider 的 smoke 结果，因此当前剩余的基础上线工作主要收敛为：在 Node 22 环境复验，以及补齐受保护 Web Console 的验收记录。
+当前代码库功能已经比较完整，仓库门禁在本地也已恢复为绿色。截止 2026 年 3 月 16 日，Windows 基线 go-live gate 已完成闭环，包含 Node 22 复验和浏览器级受保护 Web Console 验收。RabbitMQ 与 Redis Streams 队列驱动已内置实现，并具备单元测试覆盖与默认 gateway 接线，但真实 broker 的发布级证据仍待补齐。
 
 ## 就绪度快照
 
-截至 2026 年 3 月 12 日的最新本地证据（Windows，Node `v20.11.0`，因此会出现 engine warning）：
+最新本地证据记录于 2026 年 3 月 16 日（Windows 基线使用便携式 Node `v22.22.1` 复验）：
 
 - `pnpm run build`：通过
-- `pnpm run test`：通过（`36` 个测试文件，`225` 个测试）
-- `pnpm run test:integration`：通过（`6` 个测试文件，`20` 个测试）
+- `pnpm run test`：通过（`46` 个测试文件，`267` 个测试）
+- `pnpm run test:integration`：通过（`6` 个测试文件，`20` 个测试），另有一个 opt-in live-broker suite（`1` 个文件，未配置 broker 环境时 `4` 个跳过）
 - `pnpm run verify`：通过
 
 当前支持的开发平台：
@@ -20,7 +20,7 @@ Senclaw 是一个 AI Agent 编排平台，具备持久化存储、API Key 鉴权
 - Windows
 - Linux
 
-当前阻塞项和各子系统状态详见 [PRODUCTION_READINESS.md](./PRODUCTION_READINESS.md)。
+当前阻塞项与各子系统状态请查看 [PRODUCTION_READINESS.md](./PRODUCTION_READINESS.md)。
 
 ## 仓库结构
 
@@ -51,7 +51,7 @@ Packages：
 - 可用于 `SENCLAW_DB_URL` 的 SQLite 文件系统访问权限
 - 可选：Rust 工具链，用于原生沙箱验证（`native/sandbox-runner`）
 
-当前这台机器使用的是 Node `v20.11.0`，所以命令虽然能跑通，但会出现 engine warning。要进行受支持的本地验证和 CI 验证，请使用 Node 22+。
+这台机器当前默认安装仍是 Node `v20.11.0`，所以直接运行命令时会有 engine warning；若要按支持矩阵执行本地与 CI 验证，应使用 Node 22+。项目的支持运行时门禁已经通过便携式 Node `v22.22.1` 在本地完成复验。
 
 ## 快速开始
 
@@ -65,7 +65,7 @@ corepack pnpm install
 
 # 配置环境变量
 copy .env.example .env
-# Linux 上使用：cp .env.example .env
+# Linux 使用：cp .env.example .env
 
 # 构建整个 workspace
 corepack pnpm run build
@@ -116,19 +116,19 @@ scripts\stop-senclaw.cmd
 - gateway 地址
 - 运行日志目录
 
-Web Console 头部右上角提供 `EN / 中文` 语言切换按钮。所选语言会持久化，并分别作用于：
+Web Console 头部包含 `EN / 中文` 语言切换按钮。所选语言会持久化，并分别作用于：
 
-- 当前浏览器里的 Web Console 文案
+- 当前浏览器中的 Web Console 文案
 - 下一次启动脚本运行时的终端输出文案（通过 `.tmp/live-run/runtime-settings.json`）
 
-如果你已经在仓库根目录的 Windows `cmd` 里，也可以直接使用更短的命令：
+如果你已经在仓库根目录的 Windows `cmd` 中，也可以直接使用更短的命令：
 
 ```bat
 senclaw start
 senclaw stop
 ```
 
-这个包装器会转发到 `packages/cli` 里的本地 CLI，行为和启动脚本一致。
+这个包装器会转发到 `packages/cli` 中的本地 CLI，行为与启动脚本一致。
 
 ## 鉴权
 
@@ -140,11 +140,11 @@ senclaw stop
 corepack pnpm run auth:bootstrap-admin
 ```
 
-Web Console 当前支持轻量级 API Key session。使用 agents、runs 或 task 提交等受保护页面前，需要先在页面头部粘贴 Bearer token。
+Web Console 当前支持轻量级 API Key session。在使用 agents、runs 或 task 提交等受保护页面前，需要先在页面头部粘贴 Bearer token。
 
 ## 真实 Provider Smoke 测试
 
-Senclaw 提供了一条不把密钥写入仓库的 OpenAI-compatible provider smoke 路径。先在本地设置以下环境变量：
+Senclaw 提供了一条不会把密钥写入仓库的 OpenAI-compatible provider smoke 路径。先在本地设置以下环境变量：
 
 ```bash
 SENCLAW_OPENAI_API_KEY=<你的 key>
@@ -161,7 +161,7 @@ SENCLAW_SMOKE_TIMEOUT_MS=60000
 corepack pnpm run test:provider-smoke
 ```
 
-这个脚本会走真实的 gateway 和 agent runtime 流程，创建一个临时的 `provider: openai` agent，提交任务，等待执行完成，并打印 assistant 回复或可诊断的 provider 错误。2026 年 3 月 12 日，这条 smoke 路径已经在 Volcengine Ark OpenAI-compatible endpoint 上用 `doubao-seed-2.0-pro` 验证过，返回结果为 `OK`。
+该脚本会走真实的 gateway 和 agent runtime 流程，创建一个临时的 `provider: openai` agent，提交任务，等待执行完成，并输出 assistant 响应或可诊断的 provider 错误。2026 年 3 月 12 日，这条 smoke 路径已在 Volcengine Ark OpenAI-compatible endpoint 上使用 `doubao-seed-2.0-pro` 完成验证，返回结果为 `OK`。
 
 ## 验证命令
 
@@ -172,7 +172,7 @@ corepack pnpm run test:integration
 corepack pnpm run verify
 ```
 
-当前对外发布声明应以这四条命令全部通过为前提。当前剩余的基础上线收尾工作，是在 Node 22 上重新跑一遍，以及补齐受保护 Web Console 的验收记录。
+当前所有发布声明都应以这四条命令全部通过为前提。Windows 基线签收已经完成，剩余发布工作只限于可选的 broker-backed queue 验证和 Linux 原生沙箱验证。
 
 ## 关键文档
 
@@ -184,12 +184,10 @@ corepack pnpm run verify
 
 ## 当前缺口
 
-项目从“本地全绿”到“可以正式宣称部署就绪”之间，还剩这些事项：
+当前从“本地已绿”到“完全可对外宣称为生产就绪”之间，剩余的是：
 
-- 在受支持的 Node 22 环境中重跑一遍 readiness matrix
-- 记录一次开启鉴权后的 Web Console 验收
-- 如果要对外宣称 broker-backed queue 已具备发布级支持，则需要补齐 RabbitMQ 和 Redis 的真实 broker 验证
-- 如果要对外宣称 level 4 native enforcement，则需要补齐 Windows 和 Linux 上基于证据的 Rust 沙箱验证
+- 在宣称 broker-backed queue 达到发布级支持前，补齐 RabbitMQ 与 Redis 的真实 broker 验证
+- 如果要在所有支持平台上宣称 level 4 native enforcement，补齐 Linux 上基于证据的 Rust 原生沙箱验证
 
 ## 仓库地址
 
