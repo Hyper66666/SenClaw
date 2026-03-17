@@ -16,6 +16,7 @@ import type {
 import type { ToolRegistry } from "@senclaw/tool-runner-host";
 import { tool as aiTool, generateText, stepCountIs } from "ai";
 import { resolveModel } from "./model-provider.js";
+import { markRunFailed } from "./run-failure.js";
 
 const logger = createLogger(
   "agent-runner",
@@ -47,31 +48,6 @@ export function formatToolResultForModel(result: ToolResult): string {
   }
 
   return `Error: ${result.error ?? "Unknown error"}`;
-}
-
-function toErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
-
-async function markRunFailed(
-  runId: string,
-  error: unknown,
-  runRepo: IRunRepository,
-  runLogger: typeof logger,
-): Promise<void> {
-  const errorMessage = toErrorMessage(error);
-
-  try {
-    await runRepo.updateStatus(runId, "failed", errorMessage);
-  } catch (statusError) {
-    runLogger.error(
-      {
-        error: statusError,
-        originalError: errorMessage,
-      },
-      "Failed to persist failed run status",
-    );
-  }
 }
 
 export async function executeRun(

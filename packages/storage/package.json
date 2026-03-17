@@ -19,7 +19,6 @@
     "db:migrate": "node ./scripts/db-migrate.js"
   },
   "dependencies": {
-    "@senclaw/config": "workspace:^",
     "@senclaw/observability": "workspace:^",
     "@senclaw/protocol": "workspace:^",
     "@senclaw/scheduler": "workspace:^",

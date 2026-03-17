@@ -1,4 +1,5 @@
-﻿import type {
+import { createChildLogger, createLogger } from "@senclaw/logging";
+import type {
   Agent,
   CreateAgent,
   IAgentRepository,
@@ -14,6 +15,19 @@ import {
   InMemoryMessageRepository,
   InMemoryRunRepository,
 } from "./repositories.js";
+import { markRunFailed } from "./run-failure.js";
+
+const logger = createLogger(
+  "agent-runner",
+  (process.env.SENCLAW_LOG_LEVEL as
+    | "trace"
+    | "debug"
+    | "info"
+    | "warn"
+    | "error"
+    | "fatal"
+    | undefined) ?? "info",
+);
 
 export class AgentService {
   private agentRepo: IAgentRepository;
@@ -59,6 +73,10 @@ export class AgentService {
     }
 
     const run = await this.runRepo.create(agentId, input);
+    const runLogger = createChildLogger(logger, {
+      agentId: agent.id,
+      runId: run.id,
+    });
 
     void executeRun(
       run.id,
@@ -69,8 +87,11 @@ export class AgentService {
       this.messageRepo,
       this.options,
     ).catch(async (error) => {
-      const errMsg = error instanceof Error ? error.message : String(error);
-      await this.runRepo.updateStatus(run.id, "failed", errMsg);
+      runLogger.error(
+        { error },
+        "Agent execution failed after task submission",
+      );
+      await markRunFailed(run.id, error, this.runRepo, runLogger);
     });
 
     return run;

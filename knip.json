@@ -1,0 +1,11 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "workspaces": {
+    ".": {
+      "entry": ["scripts/*.{ts,js,mjs}", "tests/integration/**/*.ts"]
+    },
+    "packages/connector-worker": {
+      "ignoreDependencies": ["amqplib", "ioredis"]
+    }
+  }
+}

@@ -45,7 +45,7 @@ export const errorHandlerPlugin = fp(async (app) => {
       return;
     }
 
-    reply.status(statusCode).send({
+    return reply.status(statusCode).send({
       error: "INTERNAL_ERROR",
       message: statusCode >= 500 ? "Internal server error" : error.message,
     });

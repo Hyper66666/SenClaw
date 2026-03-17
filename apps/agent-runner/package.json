@@ -19,7 +19,6 @@
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.41",
-    "@senclaw/config": "workspace:^",
     "@senclaw/logging": "workspace:^",
     "@senclaw/observability": "workspace:^",
     "@senclaw/protocol": "workspace:^",

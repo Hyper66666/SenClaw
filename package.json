@@ -23,18 +23,29 @@
     "db:generate": "pnpm --filter @senclaw/storage db:generate",
     "db:check": "pnpm --filter @senclaw/storage db:check",
     "db:migrate": "node packages/storage/scripts/db-migrate.js",
-    "auth:bootstrap-admin": "tsx scripts/bootstrap-admin-key.ts"
+    "auth:bootstrap-admin": "tsx scripts/bootstrap-admin-key.ts",
+    "analyze:knip": "knip --include files,dependencies,unlisted --no-progress",
+    "analyze:ts-prune": "ts-prune -p tsconfig.workspace.json"
   },
   "pnpm": {
     "onlyBuiltDependencies": ["better-sqlite3", "esbuild"]
   },
   "devDependencies": {
-    "@opentelemetry/sdk-trace-base": "^2.1.0",
     "@biomejs/biome": "^1.9.4",
+    "@opentelemetry/sdk-trace-base": "^2.1.0",
     "@types/node": "^22.10.0",
+    "knip": "^5.86.0",
+    "ts-prune": "^0.10.3",
     "tsx": "^4.19.2",
     "typescript": "^5.7.3",
-    "vitest": "^2.1.8"
+    "vitest": "^2.1.8",
+    "@senclaw/config": "workspace:^",
+    "@senclaw/connector-worker": "workspace:^",
+    "@senclaw/protocol": "workspace:^",
+    "@senclaw/storage": "workspace:^",
+    "amqplib": "^0.10.9",
+    "fastify": "^5.8.2",
+    "ioredis": "^5.10.0"
   },
   "dependencies": {
     "zod": "^4.3.6"
