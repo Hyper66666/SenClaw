@@ -117,4 +117,9 @@ export async function registerGatewayRoutes(
     prefix: "/health",
     checks,
   });
+
+  await app.register(healthRoutes, {
+    prefix: "/api/runtime/health",
+    checks,
+  });
 }

@@ -1,7 +1,15 @@
 {
   "$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
   "files": {
-    "ignore": [".claude", ".codex", ".tmp", "dist", "node_modules", "target"]
+    "ignore": [
+      ".claude",
+      ".codex",
+      ".playwright_result",
+      ".tmp",
+      "dist",
+      "node_modules",
+      "target"
+    ]
   },
   "formatter": {
     "enabled": true,

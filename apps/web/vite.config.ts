@@ -19,10 +19,6 @@ export default defineConfig({
         target: gatewayProxyTarget,
         changeOrigin: true,
       },
-      "/health": {
-        target: gatewayProxyTarget,
-        changeOrigin: true,
-      },
     },
   },
 });

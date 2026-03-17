@@ -10,6 +10,7 @@ function isPublicRoute(url: string): boolean {
   const path = url.split("?")[0] ?? url;
   return (
     path === "/health" ||
+    path === "/api/runtime/health" ||
     path === "/metrics" ||
     path === "/api/runtime/settings" ||
     path.startsWith("/webhooks/")

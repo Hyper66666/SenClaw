@@ -50,6 +50,15 @@ describe("Gateway authentication", () => {
     expect(response.statusCode).toBe(200);
   });
 
+  it("allows runtime health checks without an API key", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/runtime/health",
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({ status: "healthy" });
+  });
+
   it("rejects protected routes without an API key", async () => {
     const response = await app.inject({ method: "GET", url: "/api/v1/agents" });
     expect(response.statusCode).toBe(401);

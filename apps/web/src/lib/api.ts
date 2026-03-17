@@ -52,5 +52,5 @@ export const runAPI = {
 };
 
 export const healthAPI = {
-  check: () => apiClient.request<HealthStatus>("/health"),
+  check: () => apiClient.request<HealthStatus>("/api/runtime/health"),
 };
