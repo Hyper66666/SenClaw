@@ -1,4 +1,12 @@
-import type { Agent, CreateAgent, Message, Run, Task } from "@senclaw/protocol";
+﻿import type {
+  Agent,
+  AgentTask,
+  AgentTaskPendingMessage,
+  CreateAgent,
+  Message,
+  Run,
+  Task,
+} from "@senclaw/protocol";
 import {
   ApiResponseError,
   MissingApiKeyError,
@@ -17,8 +25,29 @@ export interface HealthStatus {
   >;
 }
 
+export interface CreateBackgroundAgentTaskRequest {
+  agentId: string;
+  input: string;
+  parentRunId?: string;
+  parentTaskId?: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface SendAgentTaskMessageRequest {
+  content: string;
+  role?: AgentTaskPendingMessage["role"];
+}
+
 export { ApiResponseError as APIError, MissingApiKeyError };
-export type { Agent, CreateAgent, Message, Run, Task };
+export type {
+  Agent,
+  AgentTask,
+  AgentTaskPendingMessage,
+  CreateAgent,
+  Message,
+  Run,
+  Task,
+};
 
 const apiClient = createApiClient({
   getApiKey: loadStoredApiKey,
@@ -41,6 +70,31 @@ export const taskAPI = {
     apiClient.request<Run>("/api/v1/tasks", {
       method: "POST",
       body: JSON.stringify(task),
+    }),
+};
+
+export const agentTaskAPI = {
+  createBackground: (request: CreateBackgroundAgentTaskRequest) =>
+    apiClient.request<AgentTask>("/api/v1/agent-tasks/background", {
+      method: "POST",
+      body: JSON.stringify(request),
+    }),
+  list: () => apiClient.request<AgentTask[]>("/api/v1/agent-tasks"),
+  get: (id: string) =>
+    apiClient.request<AgentTask>(`/api/v1/agent-tasks/${id}`),
+  getMessages: (id: string) =>
+    apiClient.request<Message[]>(`/api/v1/agent-tasks/${id}/messages`),
+  sendMessage: (id: string, request: SendAgentTaskMessageRequest) =>
+    apiClient.request<AgentTaskPendingMessage>(
+      `/api/v1/agent-tasks/${id}/messages`,
+      {
+        method: "POST",
+        body: JSON.stringify(request),
+      },
+    ),
+  resume: (id: string) =>
+    apiClient.request<AgentTask>(`/api/v1/agent-tasks/${id}/resume`, {
+      method: "POST",
     }),
 };
 

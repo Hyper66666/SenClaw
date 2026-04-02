@@ -1,4 +1,4 @@
-import {
+﻿import {
   loadConfig,
   loadGlobalPermissionsConfig,
   resolveLocalRuntimeFiles,
@@ -21,6 +21,7 @@ import {
   startSpan,
 } from "@senclaw/observability";
 import { registerBuiltinTools, ToolRegistry } from "@senclaw/tool-runner-host";
+import { registerAgentTaskOrchestrationTools } from "./orchestration-tools.js";
 import Fastify from "fastify";
 import type { DestinationStream, LevelWithSilent, Logger } from "pino";
 import { ApprovalQueue } from "./approval-queue.js";
@@ -335,6 +336,11 @@ export async function createServer(options: CreateServerOptions = {}): Promise<{
     apiKeyService: runtimeServices.apiKeyService,
     auditLogRepository: runtimeServices.auditLogRepository,
   });
+
+  registerAgentTaskOrchestrationTools(
+    toolRegistry,
+    runtimeServices.agentService,
+  );
 
   const connectorRuntime = await createConnectorRuntime({
     agentService: runtimeServices.agentService,

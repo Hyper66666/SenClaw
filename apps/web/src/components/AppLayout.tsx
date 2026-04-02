@@ -69,6 +69,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   const navItems = [
     { path: "/agents", label: copy.layout.nav.agents },
+    { path: "/agent-tasks", label: copy.layout.nav.agentTasks },
     { path: "/runs", label: copy.layout.nav.runs },
     { path: "/tasks/new", label: copy.layout.nav.submitTask },
     { path: "/health", label: copy.layout.nav.health },

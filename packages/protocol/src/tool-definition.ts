@@ -1,4 +1,4 @@
-export interface ToolSandboxConfig {
+﻿export interface ToolSandboxConfig {
   level: 0 | 1 | 2 | 3 | 4;
   timeout?: number;
   maxMemory?: number;
@@ -8,6 +8,11 @@ export interface ToolSandboxConfig {
   allowedPaths?: string[];
 }
 
+export interface ToolConcurrencyConfig {
+  safe: boolean;
+  cancelSiblingsOnFailure?: boolean;
+}
+
 import type { z } from "zod/v4";
 
 export interface ToolDefinition<T extends z.ZodType = z.ZodType> {
@@ -15,4 +20,5 @@ export interface ToolDefinition<T extends z.ZodType = z.ZodType> {
   description: string;
   inputSchema: T;
   sandbox?: ToolSandboxConfig;
+  concurrency?: ToolConcurrencyConfig;
 }

@@ -1,5 +1,10 @@
-import { randomUUID } from "node:crypto";
-import type { IRunRepository, Run, RunStatus } from "@senclaw/protocol";
+﻿import { randomUUID } from "node:crypto";
+import type {
+  AgentRunLink,
+  IRunRepository,
+  Run,
+  RunStatus,
+} from "@senclaw/protocol";
 import { asc, eq } from "drizzle-orm";
 import type { StorageDatabase } from "./db.js";
 import { observeDbQuery } from "./metrics.js";
@@ -11,6 +16,8 @@ function mapRun(row: typeof runsTable.$inferSelect): Run {
     agentId: row.agentId,
     input: row.input,
     status: row.status as RunStatus,
+    parentRunId: row.parentRunId ?? undefined,
+    agentTaskId: row.agentTaskId ?? undefined,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
     error: row.error ?? undefined,
@@ -20,13 +27,19 @@ function mapRun(row: typeof runsTable.$inferSelect): Run {
 export class SqliteRunRepository implements IRunRepository {
   constructor(private readonly db: StorageDatabase) {}
 
-  async create(agentId: string, input: string): Promise<Run> {
+  async create(
+    agentId: string,
+    input: string,
+    link?: AgentRunLink,
+  ): Promise<Run> {
     const now = new Date().toISOString();
     const run: typeof runsTable.$inferInsert = {
       id: randomUUID(),
       agentId,
       input,
       status: "pending",
+      parentRunId: link?.parentRunId ?? null,
+      agentTaskId: link?.agentTaskId ?? null,
       createdAt: now,
       updatedAt: now,
       error: null,

@@ -1,10 +1,15 @@
+﻿import type {
+  Agent,
+  AgentTask,
+  AgentTaskPendingMessage,
+  CreateAgent,
+  Message,
+  Run,
+  Task,
+} from "@senclaw/protocol";
 import {
   formatOperatorErrorMessage,
   parseApiErrorPayload,
-  type Agent,
-  type CreateAgent,
-  type Message,
-  type Run,
 } from "@senclaw/protocol";
 import axios, { type AxiosError, type AxiosInstance } from "axios";
 import { loadConfig } from "./config.js";
@@ -20,7 +25,28 @@ export interface HealthStatus {
   >;
 }
 
-export type { Agent, CreateAgent, Message, Run };
+export interface CreateBackgroundAgentTaskRequest {
+  agentId: string;
+  input: string;
+  parentRunId?: string;
+  parentTaskId?: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface SendAgentTaskMessageRequest {
+  content: string;
+  role?: AgentTaskPendingMessage["role"];
+}
+
+export type {
+  Agent,
+  AgentTask,
+  AgentTaskPendingMessage,
+  CreateAgent,
+  Message,
+  Run,
+  Task,
+};
 
 export class APIClient {
   private client: AxiosInstance;
@@ -61,6 +87,49 @@ export class APIClient {
       agentId,
       input,
     });
+    return response.data;
+  }
+
+  async createBackgroundTask(
+    request: CreateBackgroundAgentTaskRequest,
+  ): Promise<AgentTask> {
+    const response = await this.client.post(
+      "/api/v1/agent-tasks/background",
+      request,
+    );
+    return response.data;
+  }
+
+  async listAgentTasks(): Promise<AgentTask[]> {
+    const response = await this.client.get("/api/v1/agent-tasks");
+    return response.data;
+  }
+
+  async getAgentTask(id: string): Promise<AgentTask> {
+    const response = await this.client.get(`/api/v1/agent-tasks/${id}`);
+    return response.data;
+  }
+
+  async getAgentTaskMessages(id: string): Promise<Message[]> {
+    const response = await this.client.get(
+      `/api/v1/agent-tasks/${id}/messages`,
+    );
+    return response.data;
+  }
+
+  async sendAgentTaskMessage(
+    id: string,
+    request: SendAgentTaskMessageRequest,
+  ): Promise<AgentTaskPendingMessage> {
+    const response = await this.client.post(
+      `/api/v1/agent-tasks/${id}/messages`,
+      request,
+    );
+    return response.data;
+  }
+
+  async resumeAgentTask(id: string): Promise<AgentTask> {
+    const response = await this.client.post(`/api/v1/agent-tasks/${id}/resume`);
     return response.data;
   }
 

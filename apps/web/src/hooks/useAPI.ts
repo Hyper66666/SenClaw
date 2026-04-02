@@ -1,6 +1,11 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { agentAPI, taskAPI, runAPI, healthAPI } from "@/lib/api";
-import type { CreateAgent, Task } from "@/lib/api";
+﻿import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { agentAPI, agentTaskAPI, healthAPI, runAPI, taskAPI } from "@/lib/api";
+import type {
+  CreateAgent,
+  CreateBackgroundAgentTaskRequest,
+  SendAgentTaskMessageRequest,
+  Task,
+} from "@/lib/api";
 
 export function useAgents() {
   return useQuery({
@@ -41,7 +46,7 @@ export function useRuns() {
   return useQuery({
     queryKey: ["runs"],
     queryFn: runAPI.list,
-    refetchInterval: 5000, // Poll every 5 seconds
+    refetchInterval: 5000,
   });
 }
 
@@ -51,7 +56,6 @@ export function useRun(id: string) {
     queryFn: () => runAPI.get(id),
     enabled: !!id,
     refetchInterval: (query) => {
-      // Poll while running
       const data = query.state.data;
       return data?.status === "running" || data?.status === "pending"
         ? 2000
@@ -67,7 +71,6 @@ export function useRunMessages(runId: string) {
     queryFn: () => runAPI.getMessages(runId),
     enabled: !!runId,
     refetchInterval: () => {
-      // Poll while running
       const run = runQuery.data;
       return run && (run.status === "running" || run.status === "pending")
         ? 2000
@@ -86,10 +89,96 @@ export function useSubmitTask() {
   });
 }
 
+export function useAgentTasks() {
+  return useQuery({
+    queryKey: ["agentTasks"],
+    queryFn: agentTaskAPI.list,
+    refetchInterval: 5000,
+  });
+}
+
+export function useAgentTask(id: string) {
+  return useQuery({
+    queryKey: ["agentTasks", id],
+    queryFn: () => agentTaskAPI.get(id),
+    enabled: !!id,
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      return data?.status === "running" || data?.status === "pending"
+        ? 2000
+        : false;
+    },
+  });
+}
+
+export function useAgentTaskMessages(taskId: string) {
+  const taskQuery = useAgentTask(taskId);
+  return useQuery({
+    queryKey: ["agentTasks", taskId, "messages"],
+    queryFn: () => agentTaskAPI.getMessages(taskId),
+    enabled: !!taskId,
+    refetchInterval: () => {
+      const task = taskQuery.data;
+      return task && (task.status === "running" || task.status === "pending")
+        ? 2000
+        : false;
+    },
+  });
+}
+
+export function useCreateBackgroundTask() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (request: CreateBackgroundAgentTaskRequest) =>
+      agentTaskAPI.createBackground(request),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["agentTasks"] });
+    },
+  });
+}
+
+export function useResumeAgentTask() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (taskId: string) => agentTaskAPI.resume(taskId),
+    onSuccess: (_task, taskId) => {
+      queryClient.invalidateQueries({ queryKey: ["agentTasks"] });
+      queryClient.invalidateQueries({ queryKey: ["agentTasks", taskId] });
+      queryClient.invalidateQueries({
+        queryKey: ["agentTasks", taskId, "messages"],
+      });
+      queryClient.invalidateQueries({ queryKey: ["runs"] });
+    },
+  });
+}
+
+export function useSendAgentTaskMessage() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      taskId,
+      request,
+    }: {
+      taskId: string;
+      request: SendAgentTaskMessageRequest;
+    }) => agentTaskAPI.sendMessage(taskId, request),
+    onSuccess: (_pending, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["agentTasks"] });
+      queryClient.invalidateQueries({
+        queryKey: ["agentTasks", variables.taskId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["agentTasks", variables.taskId, "messages"],
+      });
+      queryClient.invalidateQueries({ queryKey: ["runs"] });
+    },
+  });
+}
+
 export function useHealth() {
   return useQuery({
     queryKey: ["health"],
     queryFn: healthAPI.check,
-    refetchInterval: 30000, // Poll every 30 seconds
+    refetchInterval: 30000,
   });
 }

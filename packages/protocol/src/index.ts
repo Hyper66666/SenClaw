@@ -1,14 +1,44 @@
-export {
+﻿export {
   ProviderConfigSchema,
   type ProviderConfig,
 } from "./provider-config.js";
 
 export {
+  AgentDefinitionSchema,
+  AgentEffortSchema,
+  AgentIsolationSchema,
+  AgentPermissionModeSchema,
   AgentSchema,
   CreateAgentSchema,
   type Agent,
+  type AgentDefinition,
+  type AgentEffort,
+  type AgentIsolation,
+  type AgentPermissionMode,
   type CreateAgent,
 } from "./agent.js";
+
+export {
+  AgentRunLinkSchema,
+  AgentTaskPendingMessageRoleEnum,
+  AgentTaskPendingMessageSchema,
+  AgentTaskSchema,
+  AgentTaskStatusEnum,
+  AgentTranscriptEntrySchema,
+  AgentTranscriptReferenceSchema,
+  CreateAgentTaskPendingMessageSchema,
+  CreateAgentTaskSchema,
+  type AgentRunLink,
+  type AgentTask,
+  type AgentTaskMetadata,
+  type AgentTaskPendingMessage,
+  type AgentTaskPendingMessageRole,
+  type AgentTaskStatus,
+  type AgentTranscriptEntry,
+  type AgentTranscriptReference,
+  type CreateAgentTask,
+  type CreateAgentTaskPendingMessage,
+} from "./agent-task.js";
 
 export {
   ApiKeyListFiltersSchema,
@@ -45,6 +75,9 @@ export {
 
 export type {
   IAgentRepository,
+  IAgentTaskMessageRepository,
+  IAgentTaskPendingMessageRepository,
+  IAgentTaskRepository,
   IApiKeyRepository,
   IAuditLogRepository,
   IMessageRepository,

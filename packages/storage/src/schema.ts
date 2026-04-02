@@ -1,4 +1,4 @@
-import {
+﻿import {
   index,
   integer,
   sqliteTable,
@@ -12,6 +12,14 @@ export const agentsTable = sqliteTable("agents", {
   systemPrompt: text("system_prompt").notNull(),
   provider: text("provider").notNull(),
   tools: text("tools").notNull(),
+  effort: text("effort").notNull().default("medium"),
+  isolation: text("isolation").notNull().default("shared"),
+  permissionMode: text("permission_mode").notNull().default("default"),
+  mode: text("mode").notNull().default("standard"),
+  maxTurns: integer("max_turns"),
+  background: integer("background", { mode: "boolean" })
+    .notNull()
+    .default(false),
 });
 
 export const runsTable = sqliteTable("runs", {
@@ -19,6 +27,8 @@ export const runsTable = sqliteTable("runs", {
   agentId: text("agent_id").notNull(),
   input: text("input").notNull(),
   status: text("status").notNull(),
+  parentRunId: text("parent_run_id"),
+  agentTaskId: text("agent_task_id"),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
   error: text("error"),
@@ -37,6 +47,77 @@ export const messagesTable = sqliteTable(
   },
   (table) => ({
     runIdIdx: index("messages_run_id_idx").on(table.runId),
+  }),
+);
+
+export const agentTasksTable = sqliteTable(
+  "agent_tasks",
+  {
+    id: text("id").primaryKey(),
+    selectedAgentId: text("selected_agent_id").notNull(),
+    status: text("status").notNull(),
+    initialInput: text("initial_input").notNull(),
+    background: integer("background", { mode: "boolean" })
+      .notNull()
+      .default(true),
+    parentRunId: text("parent_run_id"),
+    parentTaskId: text("parent_task_id"),
+    activeRunId: text("active_run_id"),
+    transcriptCursor: integer("transcript_cursor").notNull().default(0),
+    metadata: text("metadata").notNull().default("{}"),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+    error: text("error"),
+  },
+  (table) => ({
+    selectedAgentIdIdx: index("agent_tasks_selected_agent_id_idx").on(
+      table.selectedAgentId,
+    ),
+    statusIdx: index("agent_tasks_status_idx").on(table.status),
+    activeRunIdIdx: index("agent_tasks_active_run_id_idx").on(
+      table.activeRunId,
+    ),
+  }),
+);
+
+export const agentTaskMessagesTable = sqliteTable(
+  "agent_task_messages",
+  {
+    seq: integer("seq").primaryKey({ autoIncrement: true }),
+    taskId: text("task_id")
+      .notNull()
+      .references(() => agentTasksTable.id, { onDelete: "cascade" }),
+    sourceRunId: text("source_run_id"),
+    role: text("role").notNull(),
+    content: text("content"),
+    toolCalls: text("tool_calls"),
+    toolCallId: text("tool_call_id"),
+    insertedAt: text("inserted_at").notNull(),
+  },
+  (table) => ({
+    taskIdIdx: index("agent_task_messages_task_id_idx").on(table.taskId),
+  }),
+);
+
+export const agentTaskPendingMessagesTable = sqliteTable(
+  "agent_task_pending_messages",
+  {
+    id: text("id").primaryKey(),
+    taskId: text("task_id")
+      .notNull()
+      .references(() => agentTasksTable.id, { onDelete: "cascade" }),
+    role: text("role").notNull(),
+    content: text("content").notNull(),
+    createdAt: text("created_at").notNull(),
+    deliveredAt: text("delivered_at"),
+  },
+  (table) => ({
+    taskIdIdx: index("agent_task_pending_messages_task_id_idx").on(
+      table.taskId,
+    ),
+    deliveredAtIdx: index("agent_task_pending_messages_delivered_at_idx").on(
+      table.deliveredAt,
+    ),
   }),
 );
 
@@ -143,12 +224,12 @@ export const connectorsTable = sqliteTable(
   {
     id: text("id").primaryKey(),
     name: text("name").notNull(),
-    type: text("type").notNull(), // 'webhook', 'queue', 'polling'
+    type: text("type").notNull(),
     agentId: text("agent_id")
       .notNull()
       .references(() => agentsTable.id, { onDelete: "cascade" }),
-    config: text("config").notNull(), // JSON: connector-specific configuration
-    transformation: text("transformation").notNull(), // JSON: event-to-task mapping
+    config: text("config").notNull(),
+    transformation: text("transformation").notNull(),
     enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
     createdAt: text("created_at").notNull(),
     updatedAt: text("updated_at").notNull(),
@@ -168,9 +249,9 @@ export const connectorEventsTable = sqliteTable(
     connectorId: text("connector_id")
       .notNull()
       .references(() => connectorsTable.id, { onDelete: "cascade" }),
-    payload: text("payload").notNull(), // JSON: raw event payload
-    transformedInput: text("transformed_input"), // extracted task input
-    status: text("status").notNull(), // 'pending', 'submitted', 'failed', 'filtered'
+    payload: text("payload").notNull(),
+    transformedInput: text("transformed_input"),
+    status: text("status").notNull(),
     runId: text("run_id").references(() => runsTable.id, {
       onDelete: "set null",
     }),
@@ -193,6 +274,9 @@ export const schema = {
   agentsTable,
   runsTable,
   messagesTable,
+  agentTasksTable,
+  agentTaskMessagesTable,
+  agentTaskPendingMessagesTable,
   apiKeysTable,
   auditLogsTable,
   scheduledJobsTable,

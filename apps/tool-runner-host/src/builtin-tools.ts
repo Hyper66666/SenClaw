@@ -115,6 +115,7 @@ export function registerBuiltinTools(
       name: "echo",
       description: "Returns the input message as-is. Useful for testing.",
       inputSchema: EchoInputSchema,
+      concurrency: { safe: true },
     },
     (args) => args.message,
   );
@@ -124,6 +125,7 @@ export function registerBuiltinTools(
       name: "fs.read_text",
       description: "Reads a UTF-8 text file from the local filesystem.",
       inputSchema: ReadTextInputSchema,
+      concurrency: { safe: true },
     },
     async (args) => {
       try {
@@ -149,6 +151,7 @@ export function registerBuiltinTools(
       name: "fs.read_dir",
       description: "Lists entries in a local directory.",
       inputSchema: ReadDirInputSchema,
+      concurrency: { safe: true },
     },
     async (args) => {
       try {

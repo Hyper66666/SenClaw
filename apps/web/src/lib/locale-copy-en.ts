@@ -1,15 +1,16 @@
-import type { ConsoleCopy } from "./locale.js";
+﻿import type { ConsoleCopy } from "./locale.js";
 
 export const EN_CONSOLE_COPY: ConsoleCopy = {
   layout: {
     brand: "Senclaw",
     nav: {
       agents: "Agents",
+      agentTasks: "Agent Tasks",
       runs: "Runs",
       submitTask: "Submit Task",
       health: "Health",
     },
-    localeToggle: "\u4e2d\u6587",
+    localeToggle: "中文",
     darkModeLabel: "Dark mode",
     lightModeLabel: "Light mode",
     apiKeyLabel: "Gateway API key",
@@ -67,6 +68,35 @@ export const EN_CONSOLE_COPY: ConsoleCopy = {
     toolsPlaceholder: "echo, calculator",
     create: "Create Agent",
     cancel: "Cancel",
+  },
+  agentTasks: {
+    title: "Agent Tasks",
+    emptyTitle: "No background tasks yet",
+    emptyDescription:
+      "Create or resume a background agent task to track it here",
+    viewDetails: "View Details",
+    status: "Status",
+    activeRun: "Active Run",
+  },
+  agentTaskDetail: {
+    back: "Back to agent tasks",
+    title: "Agent Task Details",
+    information: "Information",
+    taskId: "Task ID",
+    agentId: "Agent ID",
+    activeRunId: "Active Run ID",
+    created: "Created",
+    updated: "Updated",
+    initialInput: "Initial Input",
+    metadata: "Metadata",
+    transcript: "Transcript",
+    noMessages: "No transcript messages yet",
+    error: "Error",
+    resume: "Resume Task",
+    sendMessage: "Send Message",
+    messagePlaceholder:
+      "Add a follow-up instruction for this background agent...",
+    notFound: "Agent task not found",
   },
   runs: {
     title: "Runs",

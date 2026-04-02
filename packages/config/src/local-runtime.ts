@@ -1,6 +1,7 @@
 ﻿import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
+import type { AgentDefinition } from "@senclaw/protocol";
 import { z } from "zod/v4";
 
 export const ConsoleLocaleSchema = z.enum(["en", "zh-CN"]);
@@ -25,12 +26,7 @@ export interface LocalRuntimeProviderConfig {
   maxTokens?: number;
 }
 
-export interface LocalRuntimeAgentSpec {
-  name: string;
-  systemPrompt: string;
-  provider: LocalRuntimeProviderConfig;
-  tools: string[];
-}
+export type LocalRuntimeAgentSpec = AgentDefinition;
 export const RuntimeSettingsSchema = z.object({
   locale: ConsoleLocaleSchema.default(DEFAULT_CONSOLE_LOCALE),
 });
@@ -83,7 +79,18 @@ export function normalizeConsoleLocale(value: unknown): ConsoleLocale {
 
 export function createDefaultLocalRuntimeAgent(
   provider: LocalRuntimeProviderConfig,
-  existing?: Partial<Pick<LocalRuntimeAgentSpec, "systemPrompt" | "tools">>,
+  existing?: Partial<
+    Pick<
+      LocalRuntimeAgentSpec,
+      | "systemPrompt"
+      | "tools"
+      | "effort"
+      | "isolation"
+      | "permissionMode"
+      | "maxTurns"
+      | "background"
+    >
+  >,
 ): LocalRuntimeAgentSpec {
   const mergedTools = [
     ...(existing?.tools ?? []),
@@ -96,6 +103,11 @@ export function createDefaultLocalRuntimeAgent(
       existing?.systemPrompt?.trim() || DEFAULT_LOCAL_RUNTIME_SYSTEM_PROMPT,
     provider,
     tools: mergedTools,
+    effort: existing?.effort ?? "medium",
+    isolation: existing?.isolation ?? "shared",
+    permissionMode: existing?.permissionMode ?? "default",
+    maxTurns: existing?.maxTurns,
+    background: existing?.background ?? true,
   };
 }
 

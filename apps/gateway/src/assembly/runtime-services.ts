@@ -1,6 +1,9 @@
-import {
+﻿import {
   AgentService,
   InMemoryAgentRepository,
+  InMemoryAgentTaskMessageRepository,
+  InMemoryAgentTaskPendingMessageRepository,
+  InMemoryAgentTaskRepository,
   InMemoryMessageRepository,
   InMemoryRunRepository,
 } from "@senclaw/agent-runner";
@@ -74,6 +77,13 @@ export function createGatewayRuntimeServices(
     storage?.auditLogs ?? new InMemoryAuditLogRepository();
   const apiKeyService = new ApiKeyService(apiKeyRepository);
 
+  const inMemoryAgentTaskRepo = new InMemoryAgentTaskRepository();
+  const inMemoryAgentTaskMessageRepo = new InMemoryAgentTaskMessageRepository(
+    inMemoryAgentTaskRepo,
+  );
+  const inMemoryAgentTaskPendingRepo =
+    new InMemoryAgentTaskPendingMessageRepository();
+
   const agentService = new AgentService(
     toolRegistry,
     {
@@ -83,6 +93,9 @@ export function createGatewayRuntimeServices(
     storage?.agents ?? new InMemoryAgentRepository(),
     storage?.runs ?? new InMemoryRunRepository(),
     storage?.messages ?? new InMemoryMessageRepository(),
+    storage?.agentTasks ?? inMemoryAgentTaskRepo,
+    storage?.agentTaskMessages ?? inMemoryAgentTaskMessageRepo,
+    storage?.agentTaskPendingMessages ?? inMemoryAgentTaskPendingRepo,
   );
 
   const schedulerService = new SchedulerService(

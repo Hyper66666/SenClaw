@@ -1,4 +1,4 @@
-import type { AgentService } from "@senclaw/agent-runner";
+﻿import type { AgentService } from "@senclaw/agent-runner";
 import type { HealthCheck } from "@senclaw/observability";
 import type {
   IAuditLogRepository,
@@ -10,6 +10,7 @@ import type { FastifyInstance } from "fastify";
 import type { ApprovalQueue } from "../approval-queue.js";
 import type { ApiKeyService } from "../auth/api-key-service.js";
 import { agentRoutes } from "../routes/agents.js";
+import { agentTaskRoutes } from "../routes/agent-tasks.js";
 import { approvalRoutes } from "../routes/approvals.js";
 import {
   connectorRoutes,
@@ -70,6 +71,11 @@ export async function registerGatewayRoutes(
 
   await app.register(taskRoutes, {
     prefix: "/api/v1/tasks",
+    agentService,
+  });
+
+  await app.register(agentTaskRoutes, {
+    prefix: "/api/v1/agent-tasks",
     agentService,
   });
 

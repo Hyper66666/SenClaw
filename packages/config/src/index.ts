@@ -1,6 +1,7 @@
 ﻿import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { resolve } from "node:path";
+import type { AgentDefinition } from "@senclaw/protocol";
 import { config as loadDotenv } from "dotenv";
 import { z } from "zod/v4";
 
@@ -113,6 +114,82 @@ const GLOBAL_CONFIG_FILE = resolve(homedir(), ".senclawrc");
 const GlobalCliConfigSchema = z.object({
   permissions: GlobalPermissionsConfigSchema.optional(),
 });
+
+const AgentDefinitionConfigSchema = z.object({
+  name: z.string().min(1),
+  systemPrompt: z.string().min(1),
+  provider: z.object({
+    provider: z.string().min(1),
+    model: z.string().min(1),
+    temperature: z.number().optional(),
+    maxTokens: z.number().int().positive().optional(),
+  }),
+  tools: z.array(z.string()).default([]),
+  effort: z.enum(["low", "medium", "high"]).default("medium"),
+  isolation: z.enum(["shared", "isolated"]).default("shared"),
+  permissionMode: z.string().min(1).default("default"),
+  maxTurns: z.number().int().positive().optional(),
+  background: z.boolean().default(false),
+});
+
+const AgentDefinitionsFileSchema = z.object({
+  agents: z.array(AgentDefinitionConfigSchema).default([]),
+});
+
+export interface LoadAgentDefinitionsOptions {
+  workspaceRoot?: string;
+  builtInAgents?: AgentDefinition[];
+  userConfigFile?: string;
+  projectConfigFile?: string;
+}
+
+export function resolveUserAgentDefinitionsFile(): string {
+  return resolve(homedir(), ".senclaw", "agents.json");
+}
+
+export function resolveProjectAgentDefinitionsFile(
+  workspaceRoot = process.cwd(),
+): string {
+  return resolve(workspaceRoot, ".senclaw", "agents.json");
+}
+
+function readAgentDefinitionFile(filePath: string): AgentDefinition[] {
+  if (!existsSync(filePath)) {
+    return [];
+  }
+
+  const raw = JSON.parse(readFileSync(filePath, "utf8")) as unknown;
+  return AgentDefinitionsFileSchema.parse(raw).agents;
+}
+
+function mergeAgentDefinitions(
+  base: AgentDefinition[],
+  overrides: AgentDefinition[],
+): AgentDefinition[] {
+  const merged = new Map(base.map((agent) => [agent.name, agent]));
+  for (const agent of overrides) {
+    merged.set(agent.name, agent);
+  }
+  return Array.from(merged.values());
+}
+
+export function loadAgentDefinitions(
+  options: LoadAgentDefinitionsOptions = {},
+): AgentDefinition[] {
+  const userFile = options.userConfigFile ?? resolveUserAgentDefinitionsFile();
+  const projectFile =
+    options.projectConfigFile ??
+    resolveProjectAgentDefinitionsFile(options.workspaceRoot);
+
+  const builtIn = options.builtInAgents ?? [];
+  const userAgents = readAgentDefinitionFile(userFile);
+  const projectAgents = readAgentDefinitionFile(projectFile);
+
+  return mergeAgentDefinitions(
+    mergeAgentDefinitions(builtIn, userAgents),
+    projectAgents,
+  );
+}
 
 const SenclawConfigSchema = z.object({
   logLevel: z

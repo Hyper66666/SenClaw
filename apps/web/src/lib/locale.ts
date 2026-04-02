@@ -1,4 +1,4 @@
-import { EN_CONSOLE_COPY } from "./locale-copy-en.js";
+﻿import { EN_CONSOLE_COPY } from "./locale-copy-en.js";
 import { ZH_CN_CONSOLE_COPY } from "./locale-copy-zh-cn.js";
 
 export const CONSOLE_LOCALE_STORAGE_KEY = "senclaw.locale";
@@ -16,6 +16,7 @@ export interface ConsoleCopy {
     brand: string;
     nav: {
       agents: string;
+      agentTasks: string;
       runs: string;
       submitTask: string;
       health: string;
@@ -75,6 +76,33 @@ export interface ConsoleCopy {
     toolsPlaceholder: string;
     create: string;
     cancel: string;
+  };
+  agentTasks: {
+    title: string;
+    emptyTitle: string;
+    emptyDescription: string;
+    viewDetails: string;
+    status: string;
+    activeRun: string;
+  };
+  agentTaskDetail: {
+    back: string;
+    title: string;
+    information: string;
+    taskId: string;
+    agentId: string;
+    activeRunId: string;
+    created: string;
+    updated: string;
+    initialInput: string;
+    metadata: string;
+    transcript: string;
+    noMessages: string;
+    error: string;
+    resume: string;
+    sendMessage: string;
+    messagePlaceholder: string;
+    notFound: string;
   };
   runs: {
     title: string;

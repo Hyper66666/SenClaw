@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+﻿import { randomUUID } from "node:crypto";
 import type { Agent, CreateAgent, IAgentRepository } from "@senclaw/protocol";
 import { eq } from "drizzle-orm";
 import type { StorageDatabase } from "./db.js";
@@ -18,6 +18,12 @@ function mapAgent(row: typeof agentsTable.$inferSelect): Agent {
     systemPrompt: row.systemPrompt,
     provider: deserializeProvider(row.provider),
     tools: deserializeTools(row.tools),
+    effort: (row.effort as Agent["effort"]) ?? "medium",
+    isolation: (row.isolation as Agent["isolation"]) ?? "shared",
+    permissionMode: row.permissionMode,
+    mode: (row.mode as Agent["mode"]) ?? "standard",
+    maxTurns: row.maxTurns ?? undefined,
+    background: row.background,
   };
 }
 
@@ -31,6 +37,12 @@ export class SqliteAgentRepository implements IAgentRepository {
       systemPrompt: data.systemPrompt,
       provider: serializeProvider(data.provider),
       tools: serializeTools(data.tools ?? []),
+      effort: data.effort ?? "medium",
+      isolation: data.isolation ?? "shared",
+      permissionMode: data.permissionMode ?? "default",
+      mode: data.mode ?? "standard",
+      maxTurns: data.maxTurns ?? null,
+      background: data.background ?? false,
     };
 
     observeDbQuery("insert", () =>

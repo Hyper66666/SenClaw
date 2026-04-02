@@ -1,4 +1,4 @@
-import { performance } from "node:perf_hooks";
+﻿import { performance } from "node:perf_hooks";
 import { createChildLogger, createLogger } from "@senclaw/logging";
 import {
   getMetricsRegistry,
@@ -18,9 +18,22 @@ export interface PendingApprovalToolExecution {
 
 export type ToolExecutionOutput = string | PendingApprovalToolExecution;
 
+export interface ToolExecutionContext {
+  signal: AbortSignal;
+}
+
+export interface ToolInvocation {
+  toolCallId: string;
+  toolName: string;
+  args: unknown;
+}
+
 export interface ToolHandler<T = unknown> {
   definition: ToolDefinition;
-  execute: (args: T) => Promise<ToolExecutionOutput> | ToolExecutionOutput;
+  execute: (
+    args: T,
+    context?: ToolExecutionContext,
+  ) => Promise<ToolExecutionOutput> | ToolExecutionOutput;
 }
 
 const logger = createLogger(
@@ -41,6 +54,14 @@ function isPendingApprovalResult(
   return typeof value !== "string" && value.type === "approval_required";
 }
 
+function createBatchAbortError(reason?: unknown): Error {
+  if (reason instanceof Error) {
+    return reason;
+  }
+
+  return new Error("Tool batch cancelled due to sibling failure");
+}
+
 export class ToolRegistry {
   private tools = new Map<string, ToolHandler>();
   private timeoutMs: number;
@@ -58,6 +79,7 @@ export class ToolRegistry {
     definition: ToolDefinition<T>,
     handler: (
       args: z.infer<T>,
+      context?: ToolExecutionContext,
     ) => Promise<ToolExecutionOutput> | ToolExecutionOutput,
   ): void {
     if (this.tools.has(definition.name)) {
@@ -67,6 +89,7 @@ export class ToolRegistry {
       definition,
       execute: handler as (
         args: unknown,
+        context?: ToolExecutionContext,
       ) => Promise<ToolExecutionOutput> | ToolExecutionOutput,
     });
   }
@@ -79,33 +102,65 @@ export class ToolRegistry {
     return Array.from(this.tools.values()).map((t) => t.definition);
   }
 
+  private isConcurrencySafe(definition: ToolDefinition | undefined): boolean {
+    return definition?.concurrency?.safe === true;
+  }
+
+  private shouldCancelSiblingsOnFailure(
+    definition: ToolDefinition | undefined,
+  ): boolean {
+    return definition?.concurrency?.cancelSiblingsOnFailure === true;
+  }
+
   private async invokeHandler(
     handler: ToolHandler,
     args: unknown,
+    signal?: AbortSignal,
   ): Promise<ToolExecutionOutput> {
-    if ((handler.definition.sandbox?.level ?? 0) >= 1) {
-      return this.sandboxRunner.execute(
-        handler,
-        args,
-      ) as Promise<ToolExecutionOutput>;
+    const context: ToolExecutionContext = {
+      signal: signal ?? new AbortController().signal,
+    };
+
+    if (context.signal.aborted) {
+      throw createBatchAbortError(context.signal.reason);
     }
 
-    return Promise.race([
-      Promise.resolve(handler.execute(args)),
-      new Promise<never>((_resolve, reject) =>
-        setTimeout(
-          () => reject(new Error("Tool execution timed out")),
-          this.timeoutMs,
-        ),
-      ),
-    ]);
+    const abortPromise = signal
+      ? new Promise<never>((_resolve, reject) => {
+          signal.addEventListener(
+            "abort",
+            () => reject(createBatchAbortError(signal.reason)),
+            { once: true },
+          );
+        })
+      : undefined;
+
+    const executePromise =
+      (handler.definition.sandbox?.level ?? 0) >= 1
+        ? (this.sandboxRunner.execute(
+            handler,
+            args,
+          ) as Promise<ToolExecutionOutput>)
+        : Promise.race([
+            Promise.resolve(handler.execute(args, context)),
+            new Promise<never>((_resolve, reject) =>
+              setTimeout(
+                () => reject(new Error("Tool execution timed out")),
+                this.timeoutMs,
+              ),
+            ),
+          ]);
+
+    return abortPromise
+      ? Promise.race([executePromise, abortPromise])
+      : executePromise;
   }
 
-  async executeTool(
-    toolCallId: string,
-    toolName: string,
-    args: unknown,
+  private async executeToolInternal(
+    invocation: ToolInvocation,
+    signal?: AbortSignal,
   ): Promise<ToolResult> {
+    const { toolCallId, toolName, args } = invocation;
     return withActiveSpan(
       "tool.execute",
       {
@@ -160,10 +215,17 @@ export class ToolRegistry {
 
         try {
           toolLogger.debug(
-            { sandboxLevel: handler.definition.sandbox?.level ?? 0 },
+            {
+              sandboxLevel: handler.definition.sandbox?.level ?? 0,
+              concurrencySafe: this.isConcurrencySafe(handler.definition),
+            },
             "Tool execution started",
           );
-          const result = await this.invokeHandler(handler, parseResult.data);
+          const result = await this.invokeHandler(
+            handler,
+            parseResult.data,
+            signal,
+          );
 
           if (isPendingApprovalResult(result)) {
             recordMetric("failed");
@@ -206,6 +268,71 @@ export class ToolRegistry {
         }
       },
     );
+  }
+
+  async executeTool(
+    toolCallId: string,
+    toolName: string,
+    args: unknown,
+  ): Promise<ToolResult> {
+    return this.executeToolInternal({ toolCallId, toolName, args });
+  }
+
+  private async executeConcurrentBatch(
+    invocations: ToolInvocation[],
+  ): Promise<ToolResult[]> {
+    const controllers = invocations.map(() => new AbortController());
+
+    return Promise.all(
+      invocations.map(async (invocation, index) => {
+        const result = await this.executeToolInternal(
+          invocation,
+          controllers[index].signal,
+        );
+
+        if (!result.success) {
+          const handler = this.tools.get(invocation.toolName);
+          if (this.shouldCancelSiblingsOnFailure(handler?.definition)) {
+            for (const [otherIndex, controller] of controllers.entries()) {
+              if (otherIndex !== index && !controller.signal.aborted) {
+                controller.abort(
+                  new Error("Tool batch cancelled due to sibling failure"),
+                );
+              }
+            }
+          }
+        }
+
+        return result;
+      }),
+    );
+  }
+
+  async executeTools(invocations: ToolInvocation[]): Promise<ToolResult[]> {
+    const results: ToolResult[] = [];
+    let concurrentBatch: ToolInvocation[] = [];
+
+    const flushBatch = async () => {
+      if (concurrentBatch.length === 0) {
+        return;
+      }
+      results.push(...(await this.executeConcurrentBatch(concurrentBatch)));
+      concurrentBatch = [];
+    };
+
+    for (const invocation of invocations) {
+      const handler = this.tools.get(invocation.toolName);
+      if (this.isConcurrencySafe(handler?.definition)) {
+        concurrentBatch.push(invocation);
+        continue;
+      }
+
+      await flushBatch();
+      results.push(await this.executeToolInternal(invocation));
+    }
+
+    await flushBatch();
+    return results;
   }
 
   exportForAISdk(): Record<

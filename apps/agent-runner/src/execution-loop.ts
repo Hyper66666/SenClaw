@@ -8,6 +8,7 @@ import {
 } from "@senclaw/observability";
 import type {
   Agent,
+  AgentRunLink,
   IMessageRepository,
   IRunRepository,
   Message,
@@ -15,6 +16,11 @@ import type {
 } from "@senclaw/protocol";
 import type { ToolRegistry } from "@senclaw/tool-runner-host";
 import { tool as aiTool, generateText, stepCountIs } from "ai";
+import {
+  buildRuntimeSystemPrompt,
+  getCoordinatorAllowedToolNames,
+  isToolAllowedForAgent,
+} from "./coordinator-mode.js";
 import { resolveModel } from "./model-provider.js";
 import { markRunFailed } from "./run-failure.js";
 
@@ -35,6 +41,18 @@ export interface ExecutionOptions {
   llmTimeoutMs: number;
 }
 
+export interface RunExecutionRequest {
+  runId: string;
+  agent: Agent;
+  userInput: string;
+  toolRegistry: ToolRegistry;
+  runRepo: IRunRepository;
+  messageRepo: IMessageRepository;
+  options: ExecutionOptions;
+  link?: AgentRunLink;
+  historyMessages?: Message[];
+}
+
 export function formatToolResultForModel(result: ToolResult): string {
   if (result.success) {
     return result.content ?? "";
@@ -50,25 +68,80 @@ export function formatToolResultForModel(result: ToolResult): string {
   return `Error: ${result.error ?? "Unknown error"}`;
 }
 
-export async function executeRun(
-  runId: string,
-  agent: Agent,
-  userInput: string,
-  toolRegistry: ToolRegistry,
-  runRepo: IRunRepository,
-  messageRepo: IMessageRepository,
-  options: ExecutionOptions,
+function renderAssistantHistory(
+  message: Extract<Message, { role: "assistant" }>,
+): string {
+  if (message.content && message.content.length > 0) {
+    return message.content;
+  }
+
+  if (message.toolCalls?.length) {
+    return message.toolCalls
+      .map((call) => `Tool call ${call.toolName}(${JSON.stringify(call.args)})`)
+      .join("\n");
+  }
+
+  return "Assistant response";
+}
+
+function toModelHistoryMessages(messages: Message[]): Array<{
+  role: "user" | "assistant";
+  content: string;
+}> {
+  const normalized: Array<{ role: "user" | "assistant"; content: string }> = [];
+
+  for (const message of messages) {
+    if (message.role === "system") {
+      continue;
+    }
+    if (message.role === "user") {
+      normalized.push({ role: "user", content: message.content });
+      continue;
+    }
+    if (message.role === "assistant") {
+      normalized.push({
+        role: "assistant",
+        content: renderAssistantHistory(message),
+      });
+      continue;
+    }
+
+    normalized.push({
+      role: "assistant",
+      content: `Tool result (${message.toolCallId}): ${message.content}`,
+    });
+  }
+
+  return normalized;
+}
+
+export async function executeRunRequest(
+  request: RunExecutionRequest,
 ): Promise<void> {
+  const {
+    runId,
+    agent,
+    userInput,
+    toolRegistry,
+    runRepo,
+    messageRepo,
+    options,
+    link,
+    historyMessages = [],
+  } = request;
   const startedAt = performance.now();
   let metricStatus: "success" | "failed" = "failed";
   const runLogger = createChildLogger(logger, {
     agentId: agent.id,
     runId,
+    ...(link?.parentRunId ? { parentRunId: link.parentRunId } : {}),
+    ...(link?.agentTaskId ? { agentTaskId: link.agentTaskId } : {}),
   });
 
   await runRepo.updateStatus(runId, "running");
 
-  const systemMsg: Message = { role: "system", content: agent.systemPrompt };
+  const runtimeSystemPrompt = buildRuntimeSystemPrompt(agent);
+  const systemMsg: Message = { role: "system", content: runtimeSystemPrompt };
   const userMsg: Message = { role: "user", content: userInput };
   await messageRepo.append(runId, systemMsg);
   await messageRepo.append(runId, userMsg);
@@ -86,6 +159,8 @@ export async function executeRun(
           "agent.provider": agent.provider.provider,
           "agent.model": agent.provider.model,
           "run.id": runId,
+          ...(link?.parentRunId ? { "run.parent_id": link.parentRunId } : {}),
+          ...(link?.agentTaskId ? { "agent.task_id": link.agentTaskId } : {}),
         },
       },
       async (agentSpan) => {
@@ -107,6 +182,11 @@ export async function executeRun(
             continue;
           }
           const toolName = def.name;
+          const coordinatorTools =
+            getCoordinatorAllowedToolNames(registeredTools);
+          if (!isToolAllowedForAgent(agent, toolName, coordinatorTools)) {
+            continue;
+          }
           toolsForSdk[toolName] = aiTool({
             description: def.description,
             inputSchema: def.inputSchema,
@@ -122,7 +202,8 @@ export async function executeRun(
         }
 
         const controller = new AbortController();
-        const totalTimeoutMs = options.llmTimeoutMs * options.maxTurns;
+        const maxTurns = agent.maxTurns ?? options.maxTurns;
+        const totalTimeoutMs = options.llmTimeoutMs * maxTurns;
         const timer = setTimeout(() => controller.abort(), totalTimeoutMs);
 
         try {
@@ -145,12 +226,15 @@ export async function executeRun(
               llmLogger.debug("LLM call started");
               const response = await generateText({
                 model,
-                system: agent.systemPrompt,
-                messages: [{ role: "user" as const, content: userInput }],
+                system: runtimeSystemPrompt,
+                messages: [
+                  ...toModelHistoryMessages(historyMessages),
+                  { role: "user" as const, content: userInput },
+                ],
                 tools: toolsForSdk as Parameters<
                   typeof generateText
                 >[0]["tools"],
-                stopWhen: stepCountIs(options.maxTurns),
+                stopWhen: stepCountIs(maxTurns),
                 abortSignal: controller.signal,
               });
 
@@ -283,4 +367,24 @@ export async function executeRun(
       durationSeconds: Math.max(0, performance.now() - startedAt) / 1000,
     });
   }
+}
+
+export async function executeRun(
+  runId: string,
+  agent: Agent,
+  userInput: string,
+  toolRegistry: ToolRegistry,
+  runRepo: IRunRepository,
+  messageRepo: IMessageRepository,
+  options: ExecutionOptions,
+): Promise<void> {
+  return executeRunRequest({
+    runId,
+    agent,
+    userInput,
+    toolRegistry,
+    runRepo,
+    messageRepo,
+    options,
+  });
 }

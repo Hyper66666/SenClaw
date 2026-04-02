@@ -1,4 +1,5 @@
-import { z } from "zod/v4";
+﻿import { z } from "zod/v4";
+import { AgentRunLinkSchema } from "./agent-task.js";
 
 export const RunStatusEnum = z.enum([
   "pending",
@@ -8,7 +9,7 @@ export const RunStatusEnum = z.enum([
 ]);
 export type RunStatus = z.infer<typeof RunStatusEnum>;
 
-export const RunSchema = z.object({
+export const RunSchema = AgentRunLinkSchema.extend({
   id: z.string().min(1),
   agentId: z.string().min(1),
   input: z.string().min(1),

@@ -10,9 +10,15 @@ import { SqliteJobRepository } from "./job-repository.js";
 import { SqliteMessageRepository } from "./message-repository.js";
 import { runMigrations } from "./migrate.js";
 import { SqliteRunRepository } from "./run-repository.js";
+import { SqliteAgentTaskRepository } from "./agent-task-repository.js";
+import { SqliteAgentTaskMessageRepository } from "./agent-task-message-repository.js";
+import { SqliteAgentTaskPendingMessageRepository } from "./agent-task-pending-message-repository.js";
 
 export interface StorageBundle {
   agents: SqliteAgentRepository;
+  agentTasks: SqliteAgentTaskRepository;
+  agentTaskMessages: SqliteAgentTaskMessageRepository;
+  agentTaskPendingMessages: SqliteAgentTaskPendingMessageRepository;
   runs: SqliteRunRepository;
   messages: SqliteMessageRepository;
   apiKeys: SqliteApiKeyRepository;
@@ -32,6 +38,9 @@ export function createStorage(url: string): StorageBundle {
 
   return {
     agents: new SqliteAgentRepository(db),
+    agentTasks: new SqliteAgentTaskRepository(db),
+    agentTaskMessages: new SqliteAgentTaskMessageRepository(db),
+    agentTaskPendingMessages: new SqliteAgentTaskPendingMessageRepository(db),
     runs: new SqliteRunRepository(db),
     messages: new SqliteMessageRepository(db),
     apiKeys: new SqliteApiKeyRepository(db),
@@ -62,6 +71,9 @@ export {
 } from "./api-key-crypto.js";
 export { SqliteApiKeyRepository } from "./api-key-repository.js";
 export { SqliteAuditLogRepository } from "./audit-log-repository.js";
+export { SqliteAgentTaskMessageRepository } from "./agent-task-message-repository.js";
+export { SqliteAgentTaskPendingMessageRepository } from "./agent-task-pending-message-repository.js";
+export { SqliteAgentTaskRepository } from "./agent-task-repository.js";
 export { DatabaseHealthCheck } from "./health-check.js";
 export { openDatabase } from "./db.js";
 export { runMigrations } from "./migrate.js";
@@ -73,4 +85,9 @@ export { SqliteExecutionRepository } from "./execution-repository.js";
 export { SqliteConnectorRepository } from "./connector-repository.js";
 export { SqliteConnectorEventRepository } from "./connector-event-repository.js";
 export * from "./serialization.js";
-export { agentsTable } from "./schema.js";
+export {
+  agentTaskMessagesTable,
+  agentTaskPendingMessagesTable,
+  agentTasksTable,
+  agentsTable,
+} from "./schema.js";
